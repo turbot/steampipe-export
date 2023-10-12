@@ -13,6 +13,7 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/spf13/cobra"
@@ -35,10 +36,9 @@ func main() {
 	}
 
 	// Define flags for input and output
-	rootCmd.PersistentFlags().String("input", "", "Table name")
 	rootCmd.PersistentFlags().String("config", "", "Config file data")
 	rootCmd.PersistentFlags().String("where", "", "where clause data")
-	rootCmd.PersistentFlags().String("column", "", "Column data")
+	rootCmd.PersistentFlags().StringSlice("column", nil, "Column data")
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
 	rootCmd.PersistentFlags().String("output", "csv", "Output CSV file")
 
@@ -154,7 +154,13 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 				return false
 			})
 		}
-		res[columnName] = fmt.Sprintf("%v", val)
+		if viper.GetStringSlice("column") != nil {
+			if slices.Contains(viper.GetStringSlice("column"), columnName) {
+				res[columnName] = fmt.Sprintf("%v", val)
+			}
+		} else {
+			res[columnName] = fmt.Sprintf("%v", val)
+		}		
 	}
 
 	columns := maps.Keys(res)
