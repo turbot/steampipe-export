@@ -42,6 +42,8 @@ func main() {
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
 	rootCmd.PersistentFlags().String("output", "csv", "Output CSV file")
 
+	viper.BindPFlags(rootCmd.PersistentFlags())
+
 	pluginServer = plugin.Server(&plugin.ServeOpts{
 		PluginFunc: aws.Plugin,
 	})
@@ -72,8 +74,6 @@ func setConnectionConfig() {
 		PluginInstance:  pluginName,
 	}
 
-	fmt.Println("value of config", viper.GetString("config"))
-
 	configs := []*proto.ConnectionConfig{connectionConfig}
 	req := &proto.SetAllConnectionConfigsRequest{
 		Configs: configs,
@@ -88,7 +88,6 @@ func executeQuery(tableName string, conectionName string, displayRow displayRowF
 	var quals map[string]*proto.Quals
 	var limit int64 = -1
 
-	fmt.Println("Value of limit", viper.GetInt("limit"))
 	if viper.GetInt("limit") != 0 {
 		limit = int64(viper.GetInt("limit"))
 	}
