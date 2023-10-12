@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
-
 	"github.com/golang/protobuf/ptypes"
 	"github.com/turbot/steampipe-plugin-aws/aws"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
+	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"os"
+	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -40,7 +41,7 @@ func main() {
 	rootCmd.PersistentFlags().String("limit", "", "Limit data")
 	rootCmd.PersistentFlags().String("output", "csv", "Output CSV file")
 
-	pluginServer = plugin.NewPluginServer(&plugin.ServeOpts{
+	pluginServer = plugin.Server(&plugin.ServeOpts{
 		PluginFunc: aws.Plugin,
 	})
 
@@ -120,24 +121,18 @@ func executeQuery(tableName string, conectionName string, displayRow displayRowF
 	}
 }
 
+var rowCount = 0
+
 func displayCSVRow(displayRow *proto.ExecuteResponse) {
 	row := displayRow.Row
 
-	// fmt.Println("Value of row data:", row)
-
-	// var rowSlice []string
-
-	res := make(map[string]interface{}, len(row.Columns))
+	res := make(map[string]string, len(row.Columns))
 	for columnName, column := range row.Columns {
 		// extract column value as interface from protobuf message
 		// var i error
 		var val interface{}
 		if bytes := column.GetJsonValue(); bytes != nil {
-			if err := json.Unmarshal(bytes, &val); err != nil {
-				err = fmt.Errorf("failed to populate column '%s': %v", columnName, err)
-				// i.setError(err)
-				// return nil, err
-			}
+			val = string(bytes)
 		} else if timestamp := column.GetTimestampValue(); timestamp != nil {
 			// convert from protobuf timestamp to a RFC 3339 time string
 			val = ptypes.TimestampString(timestamp)
@@ -154,7 +149,17 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 			})
 		}
 		res[columnName] = fmt.Sprintf("%v", val)
-		fmt.Print(res)
 	}
-}
 
+	columns := maps.Keys(res)
+	sort.Strings(columns)
+
+	if rowCount == 0 {
+		fmt.Println(strings.Join(columns, ","))
+	}
+	colVals := make([]string, len(columns))
+	for i, c := range columns {
+		colVals[i] = res[c]
+	}
+	fmt.Println(strings.Join(colVals, ","))
+}
