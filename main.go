@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"sort"
+	"strings"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/turbot/steampipe-plugin-aws/aws"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
@@ -10,9 +14,6 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"os"
-	"sort"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,7 +39,7 @@ func main() {
 	rootCmd.PersistentFlags().String("config", "", "Config file data")
 	rootCmd.PersistentFlags().String("where", "", "where clause data")
 	rootCmd.PersistentFlags().String("column", "", "Column data")
-	rootCmd.PersistentFlags().String("limit", "", "Limit data")
+	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
 	rootCmd.PersistentFlags().String("output", "csv", "Output CSV file")
 
 	pluginServer = plugin.Server(&plugin.ServeOpts{
@@ -71,6 +72,8 @@ func setConnectionConfig() {
 		PluginInstance:  pluginName,
 	}
 
+	fmt.Println("value of config", viper.GetString("config"))
+
 	configs := []*proto.ConnectionConfig{connectionConfig}
 	req := &proto.SetAllConnectionConfigsRequest{
 		Configs: configs,
@@ -84,6 +87,11 @@ func executeQuery(tableName string, conectionName string, displayRow displayRowF
 	var columns []string
 	var quals map[string]*proto.Quals
 	var limit int64 = -1
+
+	fmt.Println("Value of limit", viper.GetInt("limit"))
+	if viper.GetInt("limit") != 0 {
+		limit = int64(viper.GetInt("limit"))
+	}
 
 	queryContext := proto.NewQueryContext(columns, quals, limit)
 	req := &proto.ExecuteRequest{
@@ -109,7 +117,6 @@ func executeQuery(tableName string, conectionName string, displayRow displayRowF
 	for {
 
 		response, err := stream.Recv()
-		// fmt.Println("Response data:", response)
 		if err != nil {
 			fmt.Printf("[ERROR] Error receiving data from the channel: %v", err)
 			break
