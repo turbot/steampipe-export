@@ -4,8 +4,11 @@ go 1.21
 
 require (
 	github.com/spf13/cobra v1.7.0
-	github.com/turbot/steampipe-plugin-aws v0.120.2
+	// standalone
+	github.com/turbot/steampipe-plugin-aws v0.120.1-0.20231011104341-8d08d363e5b4
 )
+
+require github.com/spf13/viper v1.16.0
 
 require (
 	cloud.google.com/go v0.110.7 // indirect
@@ -235,7 +238,6 @@ require (
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/viper v1.16.0 // indirect
 	github.com/stevenle/topsort v0.2.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect

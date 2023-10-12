@@ -2,22 +2,22 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/turbot/steampipe-plugin-aws/aws"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/spf13/cobra"
-	"github.com/turbot/steampipe/pkg/ociinstaller"
 	"github.com/spf13/viper"
+	"github.com/turbot/steampipe/pkg/ociinstaller"
 )
 
-var rowCount int
 var pluginServer *grpc.PluginServer
 var pluginAlias = "aws"
 var connection = pluginAlias
@@ -53,7 +53,7 @@ func main() {
 
 func executeCommand(cmd *cobra.Command, args []string) {
 	// TODO template
-	
+
 	table := args[0]
 	setConnectionConfig()
 	executeQuery(table, connection, displayCSVRow)
@@ -82,7 +82,7 @@ func executeQuery(tableName string, conectionName string, displayRow displayRowF
 	// construct execute request
 	var columns []string
 	var quals map[string]*proto.Quals
-	var limit int64
+	var limit int64 = -1
 
 	queryContext := proto.NewQueryContext(columns, quals, limit)
 	req := &proto.ExecuteRequest{
@@ -108,7 +108,7 @@ func executeQuery(tableName string, conectionName string, displayRow displayRowF
 	for {
 
 		response, err := stream.Recv()
-		fmt.Println("Response data:",response)
+		// fmt.Println("Response data:", response)
 		if err != nil {
 			fmt.Printf("[ERROR] Error receiving data from the channel: %v", err)
 			break
@@ -121,57 +121,40 @@ func executeQuery(tableName string, conectionName string, displayRow displayRowF
 }
 
 func displayCSVRow(displayRow *proto.ExecuteResponse) {
-	row := strings.Split(displayRow.Row.String(), ",")
-	writer := csv.NewWriter(os.Stdout)
+	row := displayRow.Row
 
-	if err := writer.Write(row); err != nil {
-		fmt.Println("Error writing to output CSV file:", err)
-		os.Exit(1)
+	// fmt.Println("Value of row data:", row)
+
+	// var rowSlice []string
+
+	res := make(map[string]interface{}, len(row.Columns))
+	for columnName, column := range row.Columns {
+		// extract column value as interface from protobuf message
+		// var i error
+		var val interface{}
+		if bytes := column.GetJsonValue(); bytes != nil {
+			if err := json.Unmarshal(bytes, &val); err != nil {
+				err = fmt.Errorf("failed to populate column '%s': %v", columnName, err)
+				// i.setError(err)
+				// return nil, err
+			}
+		} else if timestamp := column.GetTimestampValue(); timestamp != nil {
+			// convert from protobuf timestamp to a RFC 3339 time string
+			val = ptypes.TimestampString(timestamp)
+		} else {
+			// get the first field descriptor and value (we only expect column message to contain a single field
+			column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+				// is this value null?
+				if descriptor.JSONName() == "nullValue" {
+					val = nil
+				} else {
+					val = v.Interface()
+				}
+				return false
+			})
+		}
+		res[columnName] = fmt.Sprintf("%v", val)
+		fmt.Print(res)
 	}
 }
 
-// func createQueryContext() {
-
-// }
-
-// func generateCSV(cmd *cobra.Command, args []string) {
-// 	if viper.GetString("output") == "" {
-// 		fmt.Println("Output flags are required")
-// 		os.Exit(1)
-// 	}
-
-// 	// Split the input into separate fields using a comma as a separator
-// 	inputData := strings.Split(viper.GetString("input"), ",")
-
-// 	// fmt.Println("Input data:", input)
-// 	if len(inputData) == 0 {
-// 		fmt.Println("No input data provided")
-// 		os.Exit(1)
-// 	}
-
-// 	// Add code for unnamed arguments
-
-// 	// Open the output file for appending
-// 	file, err := os.OpenFile(viper.GetString("output"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-// 	if err != nil {
-// 		fmt.Println("Error opening the output file:", err)
-// 		os.Exit(1)
-// 	}
-// 	defer file.Close()
-
-// 	// Create a CSV writer
-// 	writer := csv.NewWriter(file)
-// 	defer writer.Flush()
-
-// 	// Add function for adding the headers
-// 	// addHeaders(viper.GetString("column"), file)
-// 	// columns := args
-
-// 	// Write the input data to the output CSV file
-// 	if err := writer.Write(inputData); err != nil {
-// 		fmt.Println("Error writing to output CSV file:", err)
-// 		os.Exit(1)
-// 	}
-
-// 	fmt.Println("Input data successfully added to the CSV file.")
-// }
