@@ -154,7 +154,7 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 				return false
 			})
 		}
-		if viper.GetStringSlice("column") != nil {
+		if len(viper.GetStringSlice("column")) != 0 {
 			if slices.Contains(viper.GetStringSlice("column"), columnName) {
 				res[columnName] = fmt.Sprintf("%v", val)
 			}
@@ -168,6 +168,7 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 
 	if rowCount == 0 {
 		fmt.Println(strings.Join(columns, ","))
+		rowCount ++
 	}
 	colVals := make([]string, len(columns))
 	for i, c := range columns {
