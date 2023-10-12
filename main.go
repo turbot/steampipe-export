@@ -101,10 +101,14 @@ func executeQuery(tableName string, conectionName string, displayRow displayRowF
 	}
 	ctx := context.Background()
 	stream := plugin.NewLocalPluginStream(ctx)
-	pluginServer.CallExecute(req, stream)
+	err := pluginServer.CallExecute(req, stream)
+	if err != nil {
+		fmt.Println("Error in call execute")
+	}
 	for {
 
 		response, err := stream.Recv()
+		fmt.Println("Response data:",response)
 		if err != nil {
 			fmt.Printf("[ERROR] Error receiving data from the channel: %v", err)
 			break
