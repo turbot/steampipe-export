@@ -3,10 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"sort"
-	"strings"
-
 	"github.com/golang/protobuf/ptypes"
 	"github.com/turbot/steampipe-plugin-aws/aws"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
@@ -15,6 +11,9 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"os"
+	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -57,7 +56,7 @@ func main() {
 
 func executeCommand(cmd *cobra.Command, args []string) {
 	// TODO template
-
+	
 	table := args[0]
 	if err := setConnectionConfig(); err != nil {
 		// TODO display error
@@ -215,7 +214,7 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 	if rowCount == 0 {
 		fmt.Println(strings.Join(columns, ","))
 	}
-	
+
 	rowCount++
 
 	colVals := make([]string, len(columns))
