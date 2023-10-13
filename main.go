@@ -28,16 +28,16 @@ type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:   "awsdump",
-		Short: "AWS Dump",
+		Use:   "spdump",
+		Short: "Steampipe data Dump",
 		Run:   executeCommand,
 		Args:  cobra.ExactArgs(1),
 	}
 
-	// Define flags for input and output
+	// Define flags
 	rootCmd.PersistentFlags().String("config", "", "Config file data")
 	rootCmd.PersistentFlags().String("where", "", "where clause data")
-	rootCmd.PersistentFlags().StringSlice("columns", nil, "Column data")
+	rootCmd.PersistentFlags().StringSlice("columns", nil, "Column data to display")
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
 	rootCmd.PersistentFlags().String("output", "csv", "Output CSV file")
 

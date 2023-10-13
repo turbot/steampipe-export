@@ -1,4 +1,4 @@
 OUTPUT_DIR?=/usr/local/bin
 
-awsdump:
-	go build -o ${OUTPUT_DIR}/awsdump
+spdump:
+	go build -o ${OUTPUT_DIR}/spdump
