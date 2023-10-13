@@ -37,7 +37,7 @@ func main() {
 	// Define flags for input and output
 	rootCmd.PersistentFlags().String("config", "", "Config file data")
 	rootCmd.PersistentFlags().String("where", "", "where clause data")
-	rootCmd.PersistentFlags().StringSlice("column", nil, "Column data")
+	rootCmd.PersistentFlags().StringSlice("columns", nil, "Column data")
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
 	rootCmd.PersistentFlags().String("output", "csv", "Output CSV file")
 
@@ -63,19 +63,14 @@ func executeCommand(cmd *cobra.Command, args []string) {
 		os.Exit((1))
 	}
 
-	schema, err := getSchema(table)
+	// schema, err := getSchema(table)
 
-	if err != nil {
-		// TODO display error
-		os.Exit((1))
-	}
+	// if err != nil {
+	// 	// TODO display error
+	// 	os.Exit((1))
+	// }
 
-	columns := schema.Columns
-	listCallKeyColumnList := schema.ListCallKeyColumnList
-	getCallKeyColumnList := schema.GetCallKeyColumnList
-	fmt.Println("Columns:", columns)
-	fmt.Println("ListCallKeyColumnList:", listCallKeyColumnList)
-	fmt.Println("GetCallKeyColumnList:", getCallKeyColumnList)
+
 
 	// if qual, err := getQual(schema); err != nil{
 	// 	// TODO display error
@@ -199,8 +194,8 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 				return false
 			})
 		}
-		if len(viper.GetStringSlice("column")) != 0 {
-			if slices.Contains(viper.GetStringSlice("column"), columnName) {
+		if len(viper.GetStringSlice("columns")) != 0 {
+			if slices.Contains(viper.GetStringSlice("columns"), columnName) {
 				res[columnName] = fmt.Sprintf("%v", val)
 			}
 		} else {
