@@ -214,8 +214,10 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 
 	if rowCount == 0 {
 		fmt.Println(strings.Join(columns, ","))
-		rowCount++
 	}
+	
+	rowCount++
+
 	colVals := make([]string, len(columns))
 	for i, c := range columns {
 		colVals[i] = res[c]
