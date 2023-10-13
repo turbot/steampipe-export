@@ -59,11 +59,52 @@ func executeCommand(cmd *cobra.Command, args []string) {
 	// TODO template
 
 	table := args[0]
-	setConnectionConfig()
+	if err := setConnectionConfig(); err != nil {
+		// TODO display error
+		os.Exit((1))
+	}
+
+	schema, err := getSchema(table)
+
+	if err != nil {
+		// TODO display error
+		os.Exit((1))
+	}
+
+	columns := schema.Columns
+	listCallKeyColumnList := schema.ListCallKeyColumnList
+	getCallKeyColumnList := schema.GetCallKeyColumnList
+	fmt.Println("Columns:", columns)
+	fmt.Println("ListCallKeyColumnList:", listCallKeyColumnList)
+	fmt.Println("GetCallKeyColumnList:", getCallKeyColumnList)
+
+	// if qual, err := getQual(schema); err != nil{
+	// 	// TODO display error
+
+	// 	// validate if the requested column exists
+
+	// 	os.Exit((1))
+	// }
+	// executeQuery(table, connection, qual, displayCSVRow)
 	executeQuery(table, connection, displayCSVRow)
 }
 
-func setConnectionConfig() {
+func getQual() {
+
+}
+
+func getSchema(table string) (*proto.TableSchema, error) {
+	req := &proto.GetSchemaRequest{
+		Connection: connection,
+	}
+	pluginSchema, err := pluginServer.GetSchema(req)
+	if err != nil {
+		return nil, err
+	}
+	return pluginSchema.Schema.Schema[table], nil
+}
+
+func setConnectionConfig() error {
 	pluginName := ociinstaller.NewSteampipeImageRef(pluginAlias).DisplayImageRef()
 
 	connectionConfig := &proto.ConnectionConfig{
@@ -79,7 +120,12 @@ func setConnectionConfig() {
 		Configs: configs,
 	}
 
-	pluginServer.SetAllConnectionConfigs(req)
+	_, err := pluginServer.SetAllConnectionConfigs(req)
+
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func executeQuery(tableName string, conectionName string, displayRow displayRowFunc) {
@@ -160,7 +206,7 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 			}
 		} else {
 			res[columnName] = fmt.Sprintf("%v", val)
-		}		
+		}
 	}
 
 	columns := maps.Keys(res)
@@ -168,7 +214,7 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 
 	if rowCount == 0 {
 		fmt.Println(strings.Join(columns, ","))
-		rowCount ++
+		rowCount++
 	}
 	colVals := make([]string, len(columns))
 	for i, c := range columns {
