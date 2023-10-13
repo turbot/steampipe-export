@@ -66,17 +66,21 @@ func executeCommand(cmd *cobra.Command, args []string) {
 	schema, err := getSchema(table)
 	if err != nil {
 		// TODO display error
+		fmt.Println(err)
 		os.Exit((1))
 	}
 
-	columns := getColumns(schema)
+	columns, err := getColumns(schema)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	var qual map[string]*proto.Quals
 	if viper.GetString("where") != "" {
 		whereFlag := viper.GetString("where")
 		qual, err = filterStringToQuals(whereFlag, schema)
 		if err != nil {
-			// TODO display error
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -85,13 +89,21 @@ func executeCommand(cmd *cobra.Command, args []string) {
 	executeQuery(table, connection, columns, qual, displayCSVRow)
 }
 
-func getColumns(schema *proto.TableSchema) []string {
+func getColumns(schema *proto.TableSchema) ([]string, error) {
 	var columns = viper.GetStringSlice("columns")
+	if len(columns) != 0 {
+		tableColumn := schema.GetColumnNames()
+		for _, item := range columns {
+			if !slices.Contains(tableColumn, item) {
+				return nil, fmt.Errorf("column %s does not exist", item)
+			}
+		}
+	}
 	if len(columns) == 0 {
 		columns = schema.GetColumnNames()
 	}
 	sort.Strings(columns)
-	return columns
+	return columns, nil
 }
 
 func getSchema(table string) (*proto.TableSchema, error) {
