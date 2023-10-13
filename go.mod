@@ -196,7 +196,7 @@ require (
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/hcl/v2 v2.18.0 // indirect
+	github.com/hashicorp/hcl/v2 v2.18.1 // indirect
 	github.com/hashicorp/terraform v0.15.1 // indirect
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
@@ -247,10 +247,10 @@ require (
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/tklauser/numcpus v0.3.0 // indirect
 	github.com/tkrajina/go-reflector v0.5.6 // indirect
-	github.com/turbot/go-kit v0.9.0-rc.0 // indirect
+	github.com/turbot/go-kit v0.9.0-rc.1 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	github.com/zclconf/go-cty v1.14.0 // indirect
+	github.com/zclconf/go-cty v1.14.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.17.0 // indirect
@@ -293,6 +293,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/turbot/steampipe v0.21.1
 	// standalone
-	github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.0
+	github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.1
 
 )
