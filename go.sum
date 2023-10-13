@@ -1239,8 +1239,8 @@ github.com/turbot/steampipe v0.21.1 h1:NrRIENrAXRi5bv3xBjRaUHgemEIrIJ1stlfAEfpyy
 github.com/turbot/steampipe v0.21.1/go.mod h1:2q0VZdiRcgmJbVFoUfVMBVRM9JEvKC172b1iy12R/OE=
 github.com/turbot/steampipe-plugin-aws v0.120.1-0.20231011104341-8d08d363e5b4 h1:6gzMWt+KrSr6QUwv1Iv3+qcPCjJJ2ptvaI6IMhbm5BY=
 github.com/turbot/steampipe-plugin-aws v0.120.1-0.20231011104341-8d08d363e5b4/go.mod h1:qVtErtxq47JxNbe9FG9wKyuPhAHFkyAZwOpj8xEH/jI=
-github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.1 h1:8cv3o6JE2Xi9f6+wrwR3rkP/DdHwR/aU6evY4jA0P84=
-github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.1/go.mod h1:8zAdOQGRiW2nJyfOPibQ2hOo55OEFh1juBM3m2YcAgI=
+github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.2 h1:2cgBaSJxVO9m0pN6cN6NR7S6N1bXAOiFpLDgQV5aI6Y=
+github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.2/go.mod h1:8zAdOQGRiW2nJyfOPibQ2hOo55OEFh1juBM3m2YcAgI=
 github.com/ugorji/go v0.0.0-20180813092308-00b869d2f4a5/go.mod h1:hnLbHMwcvSihnDhEfx2/BzKp2xb0Y+ErdfYcrs9tkJQ=
 github.com/ulikunitz/xz v0.5.8/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/ulikunitz/xz v0.5.10 h1:t92gobL9l3HE202wg3rlk19F6X+JOxl9BBrCCMYEYd8=

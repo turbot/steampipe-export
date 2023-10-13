@@ -8,7 +8,6 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
-	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"os"
@@ -24,7 +23,7 @@ var pluginServer *grpc.PluginServer
 var pluginAlias = "aws"
 var connection = pluginAlias
 
-type displayRowFunc func(row *proto.ExecuteResponse)
+type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
 
 func main() {
 	rootCmd := &cobra.Command{
@@ -56,21 +55,18 @@ func main() {
 
 func executeCommand(cmd *cobra.Command, args []string) {
 	// TODO template
-	
+
 	table := args[0]
 	if err := setConnectionConfig(); err != nil {
 		// TODO display error
 		os.Exit((1))
 	}
 
-	// schema, err := getSchema(table)
-
-	// if err != nil {
-	// 	// TODO display error
-	// 	os.Exit((1))
-	// }
-
-
+	schema, err := getSchema(table)
+	if err != nil {
+		// TODO display error
+		os.Exit((1))
+	}
 
 	// if qual, err := getQual(schema); err != nil{
 	// 	// TODO display error
@@ -79,8 +75,20 @@ func executeCommand(cmd *cobra.Command, args []string) {
 
 	// 	os.Exit((1))
 	// }
+
+	columns := getColumns(schema)
+
 	// executeQuery(table, connection, qual, displayCSVRow)
-	executeQuery(table, connection, displayCSVRow)
+	executeQuery(table, connection, columns, displayCSVRow)
+}
+
+func getColumns(schema *proto.TableSchema) []string {
+	var columns = viper.GetStringSlice("columns")
+	if len(columns) == 0 {
+		columns = schema.GetColumnNames()
+	}
+	sort.Strings(columns)
+	return columns
 }
 
 func getQual() {
@@ -122,9 +130,9 @@ func setConnectionConfig() error {
 	return nil
 }
 
-func executeQuery(tableName string, conectionName string, displayRow displayRowFunc) {
+func executeQuery(tableName string, conectionName string, columns []string, displayRow displayRowFunc) {
 	// construct execute request
-	var columns []string
+
 	var quals map[string]*proto.Quals
 	var limit int64 = -1
 
@@ -163,13 +171,13 @@ func executeQuery(tableName string, conectionName string, displayRow displayRowF
 		if response == nil {
 			break
 		}
-		displayCSVRow(response)
+		displayRow(response, columns)
 	}
 }
 
 var rowCount = 0
 
-func displayCSVRow(displayRow *proto.ExecuteResponse) {
+func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
 	row := displayRow.Row
 
 	res := make(map[string]string, len(row.Columns))
@@ -202,9 +210,6 @@ func displayCSVRow(displayRow *proto.ExecuteResponse) {
 			res[columnName] = fmt.Sprintf("%v", val)
 		}
 	}
-
-	columns := maps.Keys(res)
-	sort.Strings(columns)
 
 	if rowCount == 0 {
 		fmt.Println(strings.Join(columns, ","))
