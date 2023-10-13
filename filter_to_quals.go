@@ -3,16 +3,17 @@ package main
 import "C"
 import (
 	"fmt"
+	"log"
+	"strconv"
+
 	filter2 "github.com/turbot/steampipe-plugin-sdk/v5/filter"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-	"log"
-	"strconv"
 )
 
-func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (*proto.Qual, error) {
+func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string]*proto.Quals, error) {
 	columnMap := tableSchema.GetColumnMap()
 	keyColumns := tableSchema.GetAllKeyColumns()
 
@@ -26,6 +27,8 @@ func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (*proto.Qua
 
 	filter := parsed.(filter2.ComparisonNode)
 	log.Println(filter)
+	var qual *proto.Qual
+	var column string
 
 	switch filter.Type {
 
@@ -38,7 +41,7 @@ func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (*proto.Qua
 			return nil, fmt.Errorf("failed to parse filter")
 		}
 
-		column := codeNodes[0].Value
+		column = codeNodes[0].Value
 		value := codeNodes[1].Value
 		operator := filter.Operator.Value
 
@@ -56,21 +59,22 @@ func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (*proto.Qua
 		if err != nil {
 			return nil, err
 		}
-		res := &proto.Qual{
+
+		qual = &proto.Qual{
 			FieldName: column,
 			Operator:  &proto.Qual_StringValue{operator},
 			Value:     qualValue,
 		}
-		return res, nil
+
 	case "in":
 		if filter.Operator.Value == "not in" {
-			return nil, fmt.Errorf("failed to convert where arge to qual - 'not in' is not supported")
+			return nil, fmt.Errorf("failed to convert 'where' arg to qual - 'not in' is not supported")
 		}
 		codeNodes, ok := filter.Values.([]filter2.CodeNode)
 		if !ok || len(codeNodes) < 2 {
 			return nil, fmt.Errorf("failed to parse filter")
 		}
-		column := codeNodes[0].Value
+		column = codeNodes[0].Value
 		operator := "="
 
 		// validate this qual
@@ -81,26 +85,40 @@ func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (*proto.Qua
 			return nil, err
 		}
 
-		// build look up of values
+		// Build look up of values
 		values := make(map[string]struct{}, len(codeNodes)-1)
 		for _, c := range codeNodes[1:] {
 			values[c.Value] = struct{}{}
 		}
-		// convert these raw values into a qual
+
+		// Convert these raw values into a qual
 		columnType := columnMap[column].Type
 		qualValue, err := stringToQualListValue(maps.Keys(values), columnType)
 		if err != nil {
 			return nil, err
 		}
-		res := &proto.Qual{
+
+		// Create a Qual slice for the field and add the Qual to it
+		qual = &proto.Qual{
 			FieldName: column,
 			Operator:  &proto.Qual_StringValue{operator},
 			Value:     qualValue,
 		}
-		return res, nil
+
+	default:
+		return nil, fmt.Errorf("failed to convert 'where' arg to qual")
+
 	}
 
-	return nil, fmt.Errorf("failed to convert filter strign to quals")
+	if qual == nil {
+		// unexpected
+		return nil, fmt.Errorf("failed to convert 'where' arg to qual")
+	}
+
+	qualmap := make(map[string]*proto.Quals)
+	qualmap[column] = &proto.Quals{Quals: []*proto.Qual{qual}}
+
+	return qualmap, nil
 }
 
 // validate this qual

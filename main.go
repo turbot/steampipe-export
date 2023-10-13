@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"sort"
+	"strings"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/turbot/steampipe-plugin-aws/aws"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
@@ -10,9 +14,6 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"os"
-	"sort"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -68,18 +69,20 @@ func executeCommand(cmd *cobra.Command, args []string) {
 		os.Exit((1))
 	}
 
-	// if qual, err := getQual(schema); err != nil{
-	// 	// TODO display error
-
-	// 	// validate if the requested column exists
-
-	// 	os.Exit((1))
-	// }
-
 	columns := getColumns(schema)
 
-	// executeQuery(table, connection, qual, displayCSVRow)
-	executeQuery(table, connection, columns, displayCSVRow)
+	var qual map[string]*proto.Quals
+	if viper.GetString("where") != "" {
+		whereFlag := viper.GetString("where")
+		qual, err = filterStringToQuals(whereFlag, schema)
+		if err != nil {
+			// TODO display error
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
+
+	executeQuery(table, connection, columns, qual, displayCSVRow)
 }
 
 func getColumns(schema *proto.TableSchema) []string {
@@ -89,10 +92,6 @@ func getColumns(schema *proto.TableSchema) []string {
 	}
 	sort.Strings(columns)
 	return columns
-}
-
-func getQual() {
-
 }
 
 func getSchema(table string) (*proto.TableSchema, error) {
@@ -130,17 +129,22 @@ func setConnectionConfig() error {
 	return nil
 }
 
-func executeQuery(tableName string, conectionName string, columns []string, displayRow displayRowFunc) {
+func executeQuery(tableName string, conectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) {
 	// construct execute request
 
-	var quals map[string]*proto.Quals
+	var qualMap = map[string]*proto.Quals{}
+
+	if qual != nil {
+		qualMap = qual
+	}
+
 	var limit int64 = -1
 
 	if viper.GetInt("limit") != 0 {
 		limit = int64(viper.GetInt("limit"))
 	}
 
-	queryContext := proto.NewQueryContext(columns, quals, limit)
+	queryContext := proto.NewQueryContext(columns, qualMap, limit)
 	req := &proto.ExecuteRequest{
 		Table:                 tableName,
 		QueryContext:          queryContext,
