@@ -1,4 +1,4 @@
-# Steampipe Data Dump (spdump)
+# Steampipe Table Dump (spdump)
 
 This repository contains a tool for data dumping from Steampipe plugins. It allows you to query and export data from Steampipe plugins.
 
