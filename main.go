@@ -37,9 +37,8 @@ func main() {
 	// Define flags
 	rootCmd.PersistentFlags().String("config", "", "Config file data")
 	rootCmd.PersistentFlags().String("where", "", "where clause data")
-	rootCmd.PersistentFlags().StringSlice("columns", nil, "Column data to display")
+	rootCmd.PersistentFlags().StringSlice("select", nil, "Column data to display")
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
-	rootCmd.PersistentFlags().String("output", "csv", "Output CSV file")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
@@ -60,6 +59,7 @@ func executeCommand(cmd *cobra.Command, args []string) {
 	table := args[0]
 	if err := setConnectionConfig(); err != nil {
 		// TODO display error
+		fmt.Println(err)
 		os.Exit((1))
 	}
 
@@ -90,7 +90,7 @@ func executeCommand(cmd *cobra.Command, args []string) {
 }
 
 func getColumns(schema *proto.TableSchema) ([]string, error) {
-	var columns = viper.GetStringSlice("columns")
+	var columns = viper.GetStringSlice("select")
 	if len(columns) != 0 {
 		tableColumn := schema.GetColumnNames()
 		for _, item := range columns {
@@ -218,8 +218,8 @@ func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
 				return false
 			})
 		}
-		if len(viper.GetStringSlice("columns")) != 0 {
-			if slices.Contains(viper.GetStringSlice("columns"), columnName) {
+		if len(viper.GetStringSlice("select")) != 0 {
+			if slices.Contains(viper.GetStringSlice("select"), columnName) {
 				res[columnName] = fmt.Sprintf("%v", val)
 			}
 		} else {
