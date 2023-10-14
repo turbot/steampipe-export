@@ -1,4 +1,4 @@
-OUTPUT_DIR?=/usr/local/bin
-
-spdump:
-	go build -o ${OUTPUT_DIR}/spdump
+build:
+	go run generate/generator.go templates . $(plugin_alias) $(plugin_github_url)
+	go mod tidy
+	make -f out/Makefile build

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"sort"
@@ -227,8 +228,20 @@ func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
 		}
 	}
 
+	var dataHeader string
+	var dataRows string
+	writer := csv.NewWriter(os.Stdout)
+
+	defer writer.Flush()
 	if rowCount == 0 {
-		fmt.Println(strings.Join(columns, ","))
+		dataHeader = strings.Join(columns, ",")
+		fields := strings.Split(dataHeader, ",")
+		writer.Write(fields)
+		writer.Flush()
+
+		if err := writer.Error(); err != nil {
+    		fmt.Println(err)
+		}
 	}
 
 	rowCount++
@@ -237,5 +250,12 @@ func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
 	for i, c := range columns {
 		colVals[i] = res[c]
 	}
-	fmt.Println(strings.Join(colVals, ","))
+	dataRows = strings.Join(colVals, ",")
+	fields := strings.Split(dataRows, ",")
+	writer.Write(fields)
+	writer.Flush()
+
+	if err := writer.Error(); err != nil {
+		fmt.Println(err)
+	}
 }
