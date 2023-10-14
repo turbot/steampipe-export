@@ -1,4 +1,4 @@
 OUTPUT_DIR?=/usr/local/bin
 
 build:
-	go build -o ${OUTPUT_DIR}/{{.PluginAlias}}_dump
+	go build -o ${OUTPUT_DIR}/aws_dump

@@ -29,7 +29,7 @@ type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:   "spdump",
+		Use:   "{{.PluginAlias}}_dump",
 		Short: "Steampipe data Dump",
 		Run:   executeCommand,
 		Args:  cobra.ExactArgs(1),

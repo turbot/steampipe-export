@@ -12,8 +12,6 @@ make spdump
 
 ## Prerequisites
 
-Before using this tool, make sure you have the following prerequisites installed on your system:
-
 - [Golang](https://golang.org/doc/install) Version 1.21 or higher.
 
 ## Usage
