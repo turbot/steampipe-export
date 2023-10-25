@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/turbot/steampipe-plugin-aws/aws"
+	aws "github.com/turbot/steampipe-plugin-aws/aws"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
@@ -29,17 +29,17 @@ type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:   "spdump",
+		Use:   "aws_dump",
 		Short: "Steampipe data Dump",
 		Run:   executeCommand,
 		Args:  cobra.ExactArgs(1),
 	}
 
 	// Define flags
-	rootCmd.PersistentFlags().String("config", "", "Config file data")
-	rootCmd.PersistentFlags().String("where", "", "where clause data")
-	rootCmd.PersistentFlags().StringSlice("select", nil, "Column data to display")
-	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
+	rootCmd.PersistentFlags().String("config", "", "Specifies the configuration file for the tool")
+	rootCmd.PersistentFlags().String("where", "", "Allows you to define a WHERE clause to filter the data you want to query")
+	rootCmd.PersistentFlags().StringSlice("select", nil, "Lets you specify the columns you want to display in the output")
+	rootCmd.PersistentFlags().Int("limit", 0, "Sets a limit on the number of rows to retrieve")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 

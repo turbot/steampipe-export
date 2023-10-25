@@ -2,15 +2,12 @@ module github.com/turbot/steampipe-table-dump
 
 go 1.21
 
-require (
-	github.com/spf13/cobra v1.7.0
-	// standalone
-	github.com/turbot/steampipe-plugin-aws v0.120.1-0.20231011104341-8d08d363e5b4
-)
+require github.com/spf13/cobra v1.7.0
 
 require (
 	github.com/golang/protobuf v1.5.3
 	github.com/spf13/viper v1.17.0
+	github.com/turbot/steampipe-plugin-aws v0.121.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	google.golang.org/protobuf v1.31.0
 )
@@ -178,6 +175,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
+	github.com/go-test/deep v1.0.8 // indirect
 	github.com/gocarina/gocsv v0.0.0-20201208093247-67c824bc04d4 // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect

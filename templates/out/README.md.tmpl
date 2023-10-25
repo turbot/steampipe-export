@@ -1,7 +1,8 @@
-# Steampipe Table Dump {{.PluginAlias}}_dump
+# {{.PluginAlias}} Table Dump {{.PluginAlias}}_dump
+
+This tool dumps data from Steampipe plugins. With {{.PluginAlias}} Table Dump at your disposal, you can effortlessly retrieve data from your cloud APIs with exceptional ease and efficiency.
 
 ## Prerequisites
-- A build of SQLite that supports extensions (default `brew` install has extensions disabled).
 - A build of the {{.PluginAlias}}_dump (default `brew` install {{.PluginAlias}}_dump).
 
 ## Usage
@@ -16,13 +17,10 @@ The `{{.PluginAlias}}_dump` tool is used from the command line and accepts vario
 
 **Flags**
 
-* `config`: Specifies the configuration file for the tool. You can provide a file path to load configuration settings.
+* `config`: lets you set the configuration options that are supported by the underlying [Steampipe plugin](https://hub.steampipe.io/plugins/turbot/{{.PluginAlias}}/configuration).
 * `limit`: Sets a limit on the number of rows to retrieve. Useful when you want to restrict the amount of data fetched.
 * `select`: Lets you specify the columns you want to display in the output. You can provide a comma-separated list of column names.
 * `where`: Allows you to define a WHERE clause to filter the data you want to query. For example, you can filter based on specific conditions.
-
-## Configuration
-If you require [configuration](https://hub.steampipe.io/plugins/turbot/{{.PluginAlias}}#configuration) for the extension, you need to set this prior to loading the extension.
 
 ## Installation
 
@@ -32,3 +30,9 @@ If you require [configuration](https://hub.steampipe.io/plugins/turbot/{{.Plugin
 ## Table Docs
 
 Please refer to the [Table Documentation](https://hub.steampipe.io/plugins/turbot/{{.PluginAlias}}/tables).
+
+## Contributing
+If you would like to contribute to this project, please open an issue or create a pull request. We welcome any improvements or bug fixes.
+
+## License
+This project is licensed under the [Apache 2.0 open source license](https://github.com/turbot/steampipe-table-dump/blob/main/LICENSE) - see the LICENSE file for details.

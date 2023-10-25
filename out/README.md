@@ -1,7 +1,8 @@
-# Steampipe Table Dump aws_dump
+# AWS Table Dump
+
+This tool dumps data from Steampipe plugins. With aws Table Dump at your disposal, you can effortlessly retrieve data from your cloud APIs with exceptional ease and efficiency.
 
 ## Prerequisites
-- A build of SQLite that supports extensions (default `brew` install has extensions disabled).
 - A build of the aws_dump (default `brew` install aws_dump).
 
 ## Usage
@@ -16,13 +17,10 @@ aws_dump [flags] <table_name>
 
 **Flags**
 
-* `config`: Specifies the configuration file for the tool. You can provide a file path to load configuration settings.
+* `config`: lets you set the configuration options that are supported by the underlying [Steampipe plugin](https://hub.steampipe.io/plugins/turbot/aws/configuration).
 * `limit`: Sets a limit on the number of rows to retrieve. Useful when you want to restrict the amount of data fetched.
 * `select`: Lets you specify the columns you want to display in the output. You can provide a comma-separated list of column names.
 * `where`: Allows you to define a WHERE clause to filter the data you want to query. For example, you can filter based on specific conditions.
-
-## Configuration
-If you require [configuration](https://hub.steampipe.io/plugins/turbot/aws#configuration) for the extension, you need to set this prior to loading the extension.
 
 ## Installation
 
@@ -32,3 +30,11 @@ If you require [configuration](https://hub.steampipe.io/plugins/turbot/aws#confi
 ## Table Docs
 
 Please refer to the [Table Documentation](https://hub.steampipe.io/plugins/turbot/aws/tables).
+
+## Contributing
+
+If you would like to contribute to this project, please open an issue or create a pull request. We welcome any improvements or bug fixes.
+
+## License
+
+This project is licensed under the [Apache 2.0 open source license](https://github.com/turbot/steampipe-table-dump/blob/main/LICENSE) - see the LICENSE file for details.

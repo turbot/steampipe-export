@@ -1,13 +1,33 @@
-# Steampipe Table Dump (spdump)
+# AWS Dump 
 
-This repository contains a tool for data dumping from Steampipe plugins. It allows you to query and export data from Steampipe plugins.
+The AWS Dump can effortlessly retrieve data from your Steampipe plugins with exceptional ease and efficiency.
+
+Utilize the AWS Dump to effortlessly retrieve AWS data. This extension uses the [Steampipe Plugin](https://github.com/turbot/steampipe-plugin-aws) for its operation, offering a seamless connection between Steampipe and AWS.
+
+## Quick start
+
+Copy the binary `aws_dump` to a directory of choice
+
+Build, which automatically installs the new version to your directory of choice:
+
+```
+make aws_dump
+```
+
+Run a query:
+
+```
+aws_dump aws_account
+```
+
+
 
 ## Getting Started
 
 To get started with the Steampipe Data Dump tool, you'll need to build and install it. You can do so using the provided `Makefile`. Run the following command to build the tool and install it in the specified directory (default is `/usr/local/bin`):
 
 ```bash
-make spdump
+make
 ```
 
 ## Prerequisites
@@ -35,6 +55,22 @@ Example
 
 ```bash
 spdump aws_s3_bucket --select name,arn,region,account_id --limit 100
+```
+
+## Quick start
+
+Copy the binary `aws_dump` to a directory of choice
+
+Build, which automatically installs the new version to your directory of choice:
+
+```
+make aws_dump
+```
+
+Run a query:
+
+```
+aws_dump aws_account
 ```
 
 ## Contributing
