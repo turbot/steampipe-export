@@ -90,15 +90,25 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 
 func main() {
 	// Check if the correct number of command-line arguments are provided
-	if len(os.Args) != 5 {
-		fmt.Println("Usage: go run generator.go <templatePath> <root> <pluginAlias> <pluginGithubRef>")
+	if len(os.Args) < 4 {
+		fmt.Println("Usage: go run generator.go <templatePath> <root> <pluginAlias> [pluginGithubUrl]")
 		return
 	}
 
 	templatePath := os.Args[1]
 	root := os.Args[2]
 	pluginAlias := os.Args[3]
-	pluginGithubUrl := os.Args[4]
+	var pluginGithubUrl string
+
+	fmt.Println(len(os.Args))
+
+	// Check if PluginGithubUrl is provided as a command-line argument
+	if len(os.Args) == 5 {
+		pluginGithubUrl = os.Args[4]
+	} else {
+		// If PluginGithubUrl is not provided, generate it based on PluginAlias
+		pluginGithubUrl = "github.com/turbot/steampipe-plugin-" + pluginAlias
+	}
 
 	// Convert relative paths to absolute paths
 	absTemplatePath, err := filepath.Abs(templatePath)
