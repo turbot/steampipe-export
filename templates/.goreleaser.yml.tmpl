@@ -18,8 +18,6 @@ builds:
     goarch:
       - amd64
       - arm64
-    flags:
-      - "-trimpath"
     ldflags:
       - "-s -w"  # strip debug info for smaller binaries
 
@@ -28,7 +26,5 @@ archives:
   - id: "{{.PluginAlias}}_dump"
     format: tar.gz
     name_template: "{{"{{"}} .ProjectName {{"}}"}}_{{"{{"}} .Os {{"}}"}}_{{"{{"}} .Arch {{"}}"}}"
-
-# If you're using modules, consider enabling this to speed up builds
-gomod:
-  proxy: true
+    files:
+      - "aws_dump*"
