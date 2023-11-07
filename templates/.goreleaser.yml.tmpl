@@ -1,5 +1,5 @@
 # .goreleaser.yml
-project_name: "{{.PluginAlias}}_dump"
+project_name: "{{.Plugin}}_dump"
 
 before:
   hooks:
@@ -10,7 +10,7 @@ checksum:
 
 # Build customizations
 builds:
-  - id: "{{.PluginAlias}}_dump"
+  - id: "{{.Plugin}}_dump"
     main: "."
     goos:
       - linux
@@ -23,7 +23,7 @@ builds:
 
 # Archive customization
 archives:
-  - id: "{{.PluginAlias}}_dump"
+  - id: "{{.Plugin}}_dump"
     format: tar.gz
     name_template: "{{"{{"}} .ProjectName {{"}}"}}_{{"{{"}} .Os {{"}}"}}_{{"{{"}} .Arch {{"}}"}}"
     files:

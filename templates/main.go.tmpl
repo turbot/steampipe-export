@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes"
-	{{.PluginAlias}} "{{.PluginGithubUrl}}/{{.PluginAlias}}"
+	{{.Plugin}} "{{.PluginGithubUrl}}/{{.Plugin}}"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
@@ -22,14 +22,14 @@ import (
 )
 
 var pluginServer *grpc.PluginServer
-var pluginAlias = "{{.PluginAlias}}"
+var pluginAlias = "{{.Plugin}}"
 var connection = pluginAlias
 
 type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:   "{{.PluginAlias}}_dump",
+		Use:   "{{.Plugin}}_dump",
 		Short: "Steampipe data Dump",
 		Run:   executeCommand,
 		Args:  cobra.ExactArgs(1),
@@ -44,7 +44,7 @@ func main() {
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
 	pluginServer = plugin.Server(&plugin.ServeOpts{
-		PluginFunc: {{.PluginAlias}}.Plugin,
+		PluginFunc: {{.Plugin}}.Plugin,
 	})
 
 	if err := rootCmd.Execute(); err != nil {
