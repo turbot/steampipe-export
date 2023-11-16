@@ -7,8 +7,6 @@ import (
 )
 
 var pluginServer *grpc.PluginServer
-var pluginAlias = "aws"
-var connection = pluginAlias
 
 type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
 

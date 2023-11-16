@@ -1,18 +1,18 @@
 package plugin_server
 
 import (
-	"github.com/turbot/steampipe-plugin-{{.PluginAlias}}/{{.PluginAlias}}"
+	"github.com/turbot/steampipe-plugin-{{.Plugin}}/{{.Plugin}}"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
 
 func GetPluginServer() *grpc.PluginServer {
 	pluginServer := plugin.Server(&plugin.ServeOpts{
-		PluginFunc: {{.PluginAlias}}.Plugin,
+		PluginFunc: {{.Plugin}}.Plugin,
 	})
 	return pluginServer
 }
 
 func GetPluginAlias() string {
-	return "{{.PluginAlias}}"
+	return "{{.Plugin}}"
 }
