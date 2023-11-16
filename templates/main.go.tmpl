@@ -28,8 +28,9 @@ var connection = pluginAlias
 type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
 
 func main() {
+	setupLogger(pluginAlias)
 	rootCmd := &cobra.Command{
-		Use:   "{{.Plugin}}_dump",
+		Use:   "{{.Plugin}}_dump TABLE_NAME [flags]",
 		Short: "Steampipe data Dump",
 		Run:   executeCommand,
 		Args:  cobra.ExactArgs(1),

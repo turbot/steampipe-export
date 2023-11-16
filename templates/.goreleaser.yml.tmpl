@@ -27,4 +27,4 @@ archives:
     format: tar.gz
     name_template: "{{"{{"}} .ProjectName {{"}}"}}_{{"{{"}} .Os {{"}}"}}_{{"{{"}} .Arch {{"}}"}}"
     files:
-      - "aws_dump*"
+      - "{{.Plugin}}_dump*"
