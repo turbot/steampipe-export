@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string]*proto.Quals, error) {
+func FilterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string]*proto.Quals, error) {
 	columnMap := tableSchema.GetColumnMap()
 	keyColumns := tableSchema.GetAllKeyColumns()
 

@@ -1,9 +1,10 @@
-package main
+package utils
 
 import (
-	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"log"
 	"testing"
+
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 )
 
 func TestFilterStringToQual(t *testing.T) {
@@ -163,7 +164,7 @@ func TestFilterStringToQual(t *testing.T) {
 		},
 	}
 	for _, testCase := range testCases {
-		quals, err := filterStringToQuals(testCase.filter, tableSchema)
+		quals, err := FilterStringToQuals(testCase.filter, tableSchema)
 		if testCase.err != "" {
 			if err == nil /*|| err.Error() != testCase.err */ {
 				t.Errorf("parseWhere(%v) err: %v, want %s", testCase.filter, err, testCase.err)
