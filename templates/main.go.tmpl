@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
+	encoding_csv "encoding/csv"
 	"fmt"
 	"os"
 	"sort"
@@ -231,7 +231,7 @@ func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
 
 	var dataHeader string
 	var dataRows string
-	writer := csv.NewWriter(os.Stdout)
+	writer := encoding_csv.NewWriter(os.Stdout)
 
 	defer writer.Flush()
 	if rowCount == 0 {
