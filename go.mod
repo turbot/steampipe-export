@@ -293,6 +293,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/turbot/steampipe v0.21.1
 	// standalone
-	github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.7.0.20231122103637-5ad47bfaf33a
+	github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.8
 
 )
