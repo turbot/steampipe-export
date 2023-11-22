@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	{{.Plugin}} "{{.PluginGithubUrl}}/{{.Plugin}}"
+	"github.com/turbot/steampipe-plugin-sdk/v5/anywhere"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
@@ -174,11 +175,8 @@ func executeQuery(tableName string, conectionName string, columns []string, qual
 		},
 	}
 	ctx := context.Background()
-	stream := plugin.NewLocalPluginStream(ctx)
-	err := pluginServer.CallExecute(req, stream)
-	if err != nil {
-		fmt.Println("Error in call execute")
-	}
+	stream := anywhere.NewLocalPluginStream(ctx)
+	pluginServer.CallExecuteAsync(req, stream)
 	for {
 
 		response, err := stream.Recv()

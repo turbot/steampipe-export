@@ -10,6 +10,7 @@ require (
 
 require (
 	github.com/golang/protobuf v1.5.3
+	github.com/hashicorp/go-hclog v1.5.0
 	github.com/spf13/viper v1.17.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	google.golang.org/protobuf v1.31.0
@@ -190,7 +191,6 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-getter v1.7.2 // indirect
-	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
@@ -293,6 +293,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/turbot/steampipe v0.21.1
 	// standalone
-	github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.2
+	github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.7.0.20231122103637-5ad47bfaf33a
 
 )
