@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 
 	"github.com/golang/protobuf/ptypes"
 	{{.Plugin}} "{{.PluginGithubUrl}}/{{.Plugin}}"
@@ -194,67 +193,72 @@ func executeQuery(tableName string, conectionName string, columns []string, qual
 var rowCount = 0
 
 func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
-	row := displayRow.Row
+    row := displayRow.Row
+    selectColumns := viper.GetStringSlice("select")
 
-	res := make(map[string]string, len(row.Columns))
-	for columnName, column := range row.Columns {
-		// extract column value as interface from protobuf message
-		// var i error
-		var val interface{}
-		if bytes := column.GetJsonValue(); bytes != nil {
-			val = string(bytes)
-		} else if timestamp := column.GetTimestampValue(); timestamp != nil {
-			// convert from protobuf timestamp to a RFC 3339 time string
-			val = ptypes.TimestampString(timestamp)
-		} else {
-			// get the first field descriptor and value (we only expect column message to contain a single field
-			column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-				// is this value null?
-				if descriptor.JSONName() == "nullValue" {
-					val = nil
-				} else {
-					val = v.Interface()
-				}
-				return false
-			})
-		}
-		if len(viper.GetStringSlice("select")) != 0 {
-			if slices.Contains(viper.GetStringSlice("select"), columnName) {
-				res[columnName] = fmt.Sprintf("%v", val)
-			}
-		} else {
-			res[columnName] = fmt.Sprintf("%v", val)
-		}
-	}
+    // Process each column and store values in a map
+    res := make(map[string]string, len(row.Columns))
+    for columnName, column := range row.Columns {
+        var val interface{}
+        if bytes := column.GetJsonValue(); bytes != nil {
+            val = string(bytes)
+        } else if timestamp := column.GetTimestampValue(); timestamp != nil {
+            val = ptypes.TimestampString(timestamp)
+        } else {
+            column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+                if descriptor.JSONName() == "nullValue" {
+                    val = nil
+                } else {
+                    val = v.Interface()
+                }
+                return false
+            })
+        }
+        res[columnName] = fmt.Sprintf("%v", val)
+    }
 
-	var dataHeader string
-	var dataRows string
-	writer := encoding_csv.NewWriter(os.Stdout)
+    // Prepare CSV writer
+    writer := encoding_csv.NewWriter(os.Stdout)
+    defer writer.Flush()
 
-	defer writer.Flush()
-	if rowCount == 0 {
-		dataHeader = strings.Join(columns, ",")
-		fields := strings.Split(dataHeader, ",")
-		writer.Write(fields)
-		writer.Flush()
+    // Write headers
+    if rowCount == 0 {
+        if len(selectColumns) > 0 {
+            // Write headers based on selectColumns
+            writer.Write(selectColumns)
+        } else {
+            // Write all headers
+            writer.Write(columns)
+        }
+        writer.Flush()
 
-		if err := writer.Error(); err != nil {
-    		fmt.Println(err)
-		}
-	}
+        if err := writer.Error(); err != nil {
+            fmt.Println(err)
+        }
+    }
 
-	rowCount++
+    rowCount++
 
-	colVals := make([]string, len(columns))
-	for i, c := range columns {
-		colVals[i] = res[c]
-	}
-	dataRows = strings.Join(colVals, ",")
-	fields := strings.Split(dataRows, ",")
-	writer.Write(fields)
-	writer.Flush()
+    // Generate row data
+    var colVals []string
+    if len(selectColumns) > 0 {
+        colVals = make([]string, len(selectColumns))
+        for i, columnName := range selectColumns {
+            colVals[i], _ = res[columnName] // Using _ to ignore whether columnName is present in res
+        }
+    } else {
+        colVals = make([]string, len(columns))
+        for i, columnName := range columns {
+            colVals[i], _ = res[columnName]
+        }
+    }
 
-	if err := writer.Error(); err != nil {
-		fmt.Println(err)
-	}
+    // Write the row data
+    writer.Write(colVals)
+    writer.Flush()
+
+    // Handle potential errors from the writer
+    if err := writer.Error(); err != nil {
+        fmt.Println(err)
+    }
 }
