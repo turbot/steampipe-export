@@ -11,6 +11,7 @@ checksum:
 # Build customizations
 builds:
   - id: "{{.Plugin}}_dump"
+    binary: "{{.Plugin}}_dump"
     main: "."
     goos:
       - linux
@@ -24,7 +25,10 @@ builds:
 # Archive customization
 archives:
   - id: "{{.Plugin}}_dump"
-    format: tar.gz
+    format: zip
     name_template: "{{"{{"}} .ProjectName {{"}}"}}_{{"{{"}} .Os {{"}}"}}_{{"{{"}} .Arch {{"}}"}}"
     files:
       - "{{.Plugin}}_dump*"
+    format_overrides:
+      - goos: linux
+        format: tar.gz
