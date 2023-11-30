@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	encoding_csv "encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -35,6 +36,10 @@ var connection = pluginAlias
 
 type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
 
+// Global variables to manage the state of JSON output
+var isFirstJSONRow = true
+var isJSONStarted = false
+
 func main() {
 	setupLogger(pluginAlias)
 	rootCmd := &cobra.Command{
@@ -47,6 +52,7 @@ func main() {
 	// Define flags
 	rootCmd.PersistentFlags().String("config", "", "Config file data")
 	rootCmd.PersistentFlags().String("where", "", "where clause data")
+	rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
 	rootCmd.PersistentFlags().StringSlice("select", nil, "Column data to display")
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
 
@@ -64,39 +70,46 @@ func main() {
 }
 
 func executeCommand(cmd *cobra.Command, args []string) {
-	// TODO template
-
-	table := args[0]
-	if err := setConnectionConfig(); err != nil {
-		// TODO display error
-		fmt.Println(err)
-		os.Exit((1))
-	}
-
-	schema, err := getSchema(table)
-	if err != nil {
-		// TODO display error
-		fmt.Println(err)
-		os.Exit((1))
-	}
-
-	columns, err := getColumns(schema)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	var qual map[string]*proto.Quals
-	if viper.GetString("where") != "" {
-		whereFlag := viper.GetString("where")
-		qual, err = filterStringToQuals(whereFlag, schema)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	}
-
-	executeQuery(table, connection, columns, qual, displayCSVRow)
+  // TODO template
+  table := args[0]
+  if err := setConnectionConfig(); err != nil {
+    // TODO display error
+    fmt.Println(err)
+    os.Exit((1))
+  }
+  schema, err := getSchema(table)
+  if err != nil {
+    // TODO display error
+    fmt.Println(err)
+    os.Exit((1))
+  }
+  columns, err := getColumns(schema)
+  if err != nil {
+    fmt.Println(err)
+    os.Exit(1)
+  }
+  var qual map[string]*proto.Quals
+  if viper.GetString("where") != "" {
+    whereFlag := viper.GetString("where")
+    qual, err = filterStringToQuals(whereFlag, schema)
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+  }
+  outputFormat := viper.GetString("output")
+  switch outputFormat {
+  case "json":
+    executeQuery(table, connection, columns, qual, displayJSONRow)
+    finishJSONOutput()
+  case "jsonl":
+    executeQuery(table, connection, columns, qual, displayJSONLRow)
+  case "csv":
+    executeQuery(table, connection, columns, qual, displayCSVRow)
+  default:
+    fmt.Printf("Unsupported output format: %s\n", outputFormat)
+    os.Exit(1)
+  }
 }
 
 func getColumns(schema *proto.TableSchema) ([]string, error) {
@@ -521,4 +534,111 @@ func mapOperator(operator string) string {
 func isOperatorSupported(keyColumns []string, mappedOperator string) bool {
 	// Check if the mapped operator is supported.
 	return slices.Contains(keyColumns, mappedOperator)
+}
+
+// displayJSONRow formats and outputs the row data in JSON format, managing array formatting.
+func displayJSONRow(displayRow *proto.ExecuteResponse, columns []string) {
+	selectedColumns := viper.GetStringSlice("select")
+	// If this is the first row, print the opening bracket for JSON array
+	if isFirstJSONRow {
+		fmt.Print("[")
+		isJSONStarted = true
+		isFirstJSONRow = false
+	} else {
+		// For subsequent rows, print a comma to separate JSON objects
+		fmt.Print(",")
+	}
+
+	row := displayRow.Row
+
+	// If no specific columns are selected, use all available columns
+	if len(selectedColumns) == 0 {
+		selectedColumns = columns
+	}
+
+	// Process each column and store values in a map
+	res := make(map[string]interface{})
+	for _, columnName := range selectedColumns {
+		if column, exists := row.Columns[columnName]; exists {
+			var val interface{}
+			if bytes := column.GetJsonValue(); bytes != nil {
+				val = string(bytes)
+			} else if timestamp := column.GetTimestampValue(); timestamp != nil {
+				val = ptypes.TimestampString(timestamp)
+			} else {
+				column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+					if descriptor.JSONName() == "nullValue" {
+						val = nil
+					} else {
+						val = v.Interface()
+					}
+					return false
+				})
+			}
+			res[columnName] = val
+		}
+	}
+
+	// Convert map to JSON
+	jsonData, err := json.MarshalIndent(res, "", "    ") // Using 4 spaces for indentation
+	if err != nil {
+		fmt.Printf("Error marshaling row to JSON: %v\n", err)
+		return
+	}
+
+	// Print JSON string
+	fmt.Print(string(jsonData))
+}
+
+// Call this function at the end of your data processing to close the JSON array
+func finishJSONOutput() {
+	if isJSONStarted {
+		fmt.Println("]")
+	}
+	// Reset the flags for the next use
+	isFirstJSONRow = true
+	isJSONStarted = false
+}
+// displayJSONLRow formats and outputs the row data in JSON Lines (JSONL) format for selected columns.
+func displayJSONLRow(displayRow *proto.ExecuteResponse, columns []string) {
+	selectedColumns := viper.GetStringSlice("select")
+	row := displayRow.Row
+
+	// If no specific columns are selected, use all available columns
+	if len(selectedColumns) == 0 {
+		selectedColumns = columns
+	}
+
+	// Process each column and store values in a map
+	res := make(map[string]interface{})
+	for _, columnName := range selectedColumns {
+		if column, exists := row.Columns[columnName]; exists {
+			var val interface{}
+			if bytes := column.GetJsonValue(); bytes != nil {
+				val = string(bytes)
+			} else if timestamp := column.GetTimestampValue(); timestamp != nil {
+				val = ptypes.TimestampString(timestamp)
+			} else {
+				column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+					if descriptor.JSONName() == "nullValue" {
+						val = nil
+					} else {
+						val = v.Interface()
+					}
+					return false
+				})
+			}
+			res[columnName] = val
+		}
+	}
+
+	// Convert map to JSON
+	jsonData, err := json.Marshal(res)
+	if err != nil {
+		fmt.Printf("Error marshaling row to JSON: %v\n", err)
+		return
+	}
+
+	// Print JSON line string followed by a newline
+	fmt.Println(string(jsonData))
 }
