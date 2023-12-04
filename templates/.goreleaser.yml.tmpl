@@ -1,5 +1,5 @@
 # .goreleaser.yml
-project_name: "{{.Plugin}}_dump"
+project_name: "steampipe_export_{{.Plugin}}"
 
 before:
   hooks:
@@ -10,7 +10,7 @@ checksum:
 
 # Build customizations
 builds:
-  - id: "{{.Plugin}}_dump"
+  - id: "steampipe_export_{{.Plugin}}"
     main: "."
     goos:
       - linux
@@ -23,8 +23,8 @@ builds:
 
 # Archive customization
 archives:
-  - id: "{{.Plugin}}_dump"
+  - id: "steampipe_export_{{.Plugin}}"
     format: tar.gz
     name_template: "{{"{{"}} .ProjectName {{"}}"}}_{{"{{"}} .Os {{"}}"}}_{{"{{"}} .Arch {{"}}"}}"
     files:
-      - "{{.Plugin}}_dump*"
+      - "steampipe_export_{{.Plugin}}*"

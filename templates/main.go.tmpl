@@ -43,8 +43,8 @@ var isJSONStarted = false
 func main() {
 	setupLogger(pluginAlias)
 	rootCmd := &cobra.Command{
-		Use:   "{{.Plugin}}_dump TABLE_NAME [flags]",
-		Short: "Steampipe data Dump",
+		Use:   "steampipe_export_{{.Plugin}} TABLE_NAME [flags]",
+		Short: "Steampipe export {{.Plugin}}",
 		Run:   executeCommand,
 		Args:  cobra.ExactArgs(1),
 	}

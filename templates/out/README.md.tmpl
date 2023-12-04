@@ -1,17 +1,17 @@
-# Steampipe Table Dump {{.Plugin}}_dump
+# Steampipe Export {{.Plugin}}
 
 ## Prerequisites
 - A build of SQLite that supports extensions (default `brew` install has extensions disabled).
-- A build of the {{.Plugin}}_dump (default `brew` install {{.Plugin}}_dump).
+- A build of the steampipe_export_{{.Plugin}} (default `brew` install steampipe_export_{{.Plugin}}).
 
 ## Usage
 
 ### Command Line Interface
 
-The `{{.Plugin}}_dump` tool is used from the command line and accepts various options and arguments. Here's an example of how to use it:
+The `steampipe_export_{{.Plugin}}` tool is used from the command line and accepts various options and arguments. Here's an example of how to use it:
 
 ```bash
-{{.Plugin}}_dump [flags] <table_name>
+steampipe_export_{{.Plugin}} [flags] <table_name>
 ```
 
 **Flags**
@@ -20,14 +20,15 @@ The `{{.Plugin}}_dump` tool is used from the command line and accepts various op
 * `limit`: Sets a limit on the number of rows to retrieve. Useful when you want to restrict the amount of data fetched.
 * `select`: Lets you specify the columns you want to display in the output. You can provide a comma-separated list of column names.
 * `where`: Allows you to define a WHERE clause to filter the data you want to query. For example, you can filter based on specific conditions.
+* `output`: Allows you to select output format. Supported formats are `json`, `json line` and `csv`. Default is `csv`.
 
 ## Configuration
 If you require [configuration](https://hub.steampipe.io/plugins/turbot/{{.Plugin}}#configuration) for the extension, you need to set this prior to loading the extension.
 
 ## Installation
 
-- Copy the binary `{{.Plugin}}_dump` to a directory of choice.
-- Run `make plugin_alias="{{.Plugin}}" plugin_github_url="github.com/turbot/steampipe-plugin-{{.Plugin}}"
+- Copy the binary `steampipe_export_{{.Plugin}}` to a directory of choice.
+- Run `make build plugin="{{.Plugin}}"
 
 ## Table Docs
 
