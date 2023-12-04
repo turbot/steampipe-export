@@ -35,7 +35,7 @@ main() {
   fi
 
   bin_dir="/usr/local/bin"
-  exe="$bin_dir/${plugin}_dump"
+  exe="$bin_dir/steampipe_export_${plugin}"
 
   test -z "$tmp_dir" && tmp_dir="$(mktemp -d)"
   mkdir -p "${tmp_dir}"
@@ -48,18 +48,18 @@ main() {
   trap 'rm -rf $tmp_dir' EXIT
 
   case $(uname -s) in
-    "Darwin") zip_location="$tmp_dir/${plugin}_dump_${target}" ;;
-    "Linux") zip_location="$tmp_dir/${plugin}_dump_${target}" ;;
-    *) echo "Error: ${plugin}_dump is not supported on '$(uname -s)' yet." 1>&2;exit 1 ;;
+    "Darwin") zip_location="$tmp_dir/steampipe_export_${plugin}_${target}" ;;
+    "Linux") zip_location="$tmp_dir/steampipe_export_${plugin}_${target}" ;;
+    *) echo "Error: steampipe_export_${plugin} is not supported on '$(uname -s)' yet." 1>&2;exit 1 ;;
   esac
 
   # Generate the URI for the binary
   if [ "$version" = "latest" ]; then
     uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/latest"
-    asset_name="${plugin}_dump_${target}"
+    asset_name="steampipe_export_${plugin}_${target}"
   else
     uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/tags/${version}"
-    asset_name="${plugin}_dump_${target}"
+    asset_name="steampipe_export_${plugin}_${target}"
   fi
 
   # Read the GitHub Personal Access Token
@@ -88,7 +88,7 @@ main() {
 
   echo "Installing"
   install -d "$bin_dir"
-  install "$tmp_dir/${plugin}_dump" "$bin_dir"
+  install "$tmp_dir/steampipe_export_${plugin}" "$bin_dir"
 
   echo "Applying necessary permissions"
   chmod +x $exe
@@ -96,10 +96,10 @@ main() {
   echo "Removing downloaded archive"
   rm "$zip_location"
 
-  echo "${plugin}_dump was installed successfully to $bin_dir"
+  echo "steampipe_export_${plugin} was installed successfully to $bin_dir"
 
-  if ! command -v $bin_dir/${plugin}_dump  >/dev/null; then
-    echo "${plugin}_dump was installed, but could not be executed. Are you sure '$bin_dir/${plugin}_dump' has the necessary permissions?"
+  if ! command -v $bin_dir/steampipe_export_${plugin}  >/dev/null; then
+    echo "steampipe_export_${plugin} was installed, but could not be executed. Are you sure '$bin_dir/steampipe_export_${plugin}' has the necessary permissions?"
     exit 1
   fi
 
