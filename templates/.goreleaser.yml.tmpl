@@ -24,7 +24,7 @@ builds:
 # Archive customization
 archives:
   - id: "steampipe_export_{{.Plugin}}"
-    format: gz
+    format: tar.gz
     name_template: "{{"{{"}} .ProjectName {{"}}"}}.{{"{{"}} .Os {{"}}"}}_{{"{{"}} .Arch {{"}}"}}"
     files:
       - "steampipe_export_{{.Plugin}}*"
