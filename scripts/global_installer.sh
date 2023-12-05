@@ -17,10 +17,10 @@ main() {
     exit 1
   else
     case $(uname -sm) in
-    "Darwin x86_64") target="darwin_amd64.gz" ;;
-    "Darwin arm64") target="darwin_arm64.gz" ;;
-    "Linux x86_64") target="linux_amd64.gz" ;;
-    "Linux aarch64") target="linux_arm64.gz" ;;
+    "Darwin x86_64") target="darwin_amd64.tar.gz" ;;
+    "Darwin arm64") target="darwin_arm64.tar.gz" ;;
+    "Linux x86_64") target="linux_amd64.tar.gz" ;;
+    "Linux aarch64") target="linux_arm64.tar.gz" ;;
     *) echo "Error: '$(uname -sm)' is not supported yet." 1>&2;exit 1 ;;
     esac
   fi
@@ -56,10 +56,10 @@ main() {
   # Generate the URI for the binary
   if [ "$version" = "latest" ]; then
     uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/latest"
-    asset_name="steampipe_export_${plugin}_${target}"
+    asset_name="steampipe_export_${plugin}.${target}"
   else
     uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/tags/${version}"
-    asset_name="steampipe_export_${plugin}_${target}"
+    asset_name="steampipe_export_${plugin}.${target}"
   fi
 
   # Read the GitHub Personal Access Token
