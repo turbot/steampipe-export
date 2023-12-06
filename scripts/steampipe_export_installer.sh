@@ -34,13 +34,21 @@ main() {
 
   # Check if version is provided as an argument
   if [ $# -lt 2 ] || [ -z "$2" ]; then
-    read -p "Enter the version (default: latest): " version
+    read -p "Enter the version (latest): " version
     version=${version:-latest}  # Default to 'latest' if input is empty
   else
     version=$2
   fi
 
-  bin_dir="/usr/local/bin"
+  # Check if location is provided as an argument
+  if [ $# -lt 3 ] || [ -z "$3" ]; then
+    read -p "Enter location (/usr/local/bin): " location
+    location=${location:-/usr/local/bin}  # Default to /usr/local/bin if input is empty
+  else
+    location=$3
+  fi
+
+  bin_dir=$location
   exe="$bin_dir/steampipe_export_${plugin}"
 
   test -z "$tmp_dir" && tmp_dir="$(mktemp -d)"
