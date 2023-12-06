@@ -45,6 +45,11 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use:   "steampipe_export_{{.Plugin}} TABLE_NAME [flags]",
 		Short: "Steampipe export {{.Plugin}}",
+		Long: `Export data using the {{.Plugin}} plugin.
+
+Find detailed usage information including table names, column names, and 
+examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/{{.Plugin}}
+`,
 		Run:   executeCommand,
 		Args:  cobra.ExactArgs(1),
 	}
