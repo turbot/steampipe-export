@@ -25,13 +25,19 @@ main() {
     esac
   fi
 
-  # Check if the correct number of arguments is given
-  if [ $# -eq 0 ]; then
-    echo "Usage: $0 <plugin> [version]"
-    exit 1
+  # Check if plugin is provided as an argument
+  if [ $# -eq 0 ] || [ -z "$1" ]; then
+    read -p "Enter the plugin name: " plugin
   else
     plugin=$1
-    version=${2:-latest}
+  fi
+
+  # Check if version is provided as an argument
+  if [ $# -lt 2 ] || [ -z "$2" ]; then
+    read -p "Enter the version (default: latest): " version
+    version=${version:-latest}  # Default to 'latest' if input is empty
+  else
+    version=$2
   fi
 
   bin_dir="/usr/local/bin"
@@ -48,8 +54,8 @@ main() {
   trap 'rm -rf $tmp_dir' EXIT
 
   case $(uname -s) in
-    "Darwin") zip_location="$tmp_dir/steampipe_export_${plugin}_${target}" ;;
-    "Linux") zip_location="$tmp_dir/steampipe_export_${plugin}_${target}" ;;
+    "Darwin") zip_location="$tmp_dir/steampipe_export_${plugin}.${target}" ;;
+    "Linux") zip_location="$tmp_dir/steampipe_export_${plugin}.${target}" ;;
     *) echo "Error: steampipe_export_${plugin} is not supported on '$(uname -s)' yet." 1>&2;exit 1 ;;
   esac
 
@@ -84,7 +90,7 @@ main() {
      -o "$asset_name" -L --create-dirs --output "$zip_location"
 
   echo "Deflating downloaded archive"
-  tar -xf "$zip_location" -C "$tmp_dir"
+  tar -xvf "$zip_location" -C "$tmp_dir"
 
   echo "Installing"
   install -d "$bin_dir"
