@@ -51,7 +51,7 @@ func main() {
 
 	// Define flags
 	rootCmd.PersistentFlags().String("config", "", "Config file data")
-	rootCmd.PersistentFlags().String("where", "", "where clause data")
+	rootCmd.PersistentFlags().StringArray("where", []string{}, "where clause data")
 	rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
 	rootCmd.PersistentFlags().StringSlice("select", nil, "Column data to display")
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
@@ -88,28 +88,44 @@ func executeCommand(cmd *cobra.Command, args []string) {
     fmt.Println(err)
     os.Exit(1)
   }
-  var qual map[string]*proto.Quals
-  if viper.GetString("where") != "" {
-    whereFlag := viper.GetString("where")
-    qual, err = filterStringToQuals(whereFlag, schema)
-    if err != nil {
-      fmt.Println(err)
-      os.Exit(1)
-    }
-  }
-  outputFormat := viper.GetString("output")
-  switch outputFormat {
-  case "json":
-    executeQuery(table, connection, columns, qual, displayJSONRow)
-    finishJSONOutput()
-  case "jsonl":
-    executeQuery(table, connection, columns, qual, displayJSONLRow)
-  case "csv":
-    executeQuery(table, connection, columns, qual, displayCSVRow)
-  default:
-    fmt.Printf("Unsupported output format: %s\n", outputFormat)
-    os.Exit(1)
-  }
+	quals, err := buildQuals(viper.GetStringSlice("where"), schema)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	outputFormat := viper.GetString("output")
+	switch outputFormat {
+	case "json":
+		executeQuery(table, connection, columns, quals, displayJSONRow)
+		finishJSONOutput()
+	case "jsonl":
+		executeQuery(table, connection, columns, quals, displayJSONLRow)
+	case "csv":
+		executeQuery(table, connection, columns, quals, displayCSVRow)
+	default:
+		fmt.Printf("Unsupported output format: %s\n", outputFormat)
+		os.Exit(1)
+	}
+}
+
+func buildQuals(whereClauses []string, schema *proto.TableSchema) (map[string]*proto.Quals, error) {
+	var quals map[string]*proto.Quals = make(map[string]*proto.Quals)
+	if len(whereClauses) > 0 {
+		for _, whereFlag := range whereClauses {
+			qual, err := filterStringToQuals(whereFlag, schema)
+			if err != nil {
+				return nil, err
+			}
+			for columnName, q := range qual {
+				if zQual, found := quals[columnName]; found {
+					zQual.Quals = append(zQual.Quals, q.Quals...)
+				} else {
+					quals[columnName] = q
+				}
+			}
+		}
+	}
+	return quals, nil
 }
 
 func getColumns(schema *proto.TableSchema) ([]string, error) {
