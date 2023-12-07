@@ -1,4 +1,16 @@
 OUTPUT_DIR?=/usr/local/bin
 
+# Determine the operating system
+OS := $(shell uname)
+
+# Check if the OS is Mac OS/Darwin
+ifeq ($(OS),Darwin)
+  BUILD_TAGS = netgo
+endif
+
+ifeq ($(shell uname -s),Darwin)
+	export CGO_LDFLAGS = -Wl,-undefined,dynamic_lookup
+endif
+
 build:
-	go build -o ${OUTPUT_DIR}/steampipe_export_{{.Plugin}}
+	go build -tags "$(BUILD_TAGS)" -o ${OUTPUT_DIR}/steampipe_export_{{.Plugin}}
