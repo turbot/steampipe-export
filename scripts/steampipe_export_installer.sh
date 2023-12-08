@@ -98,7 +98,7 @@ main() {
   echo "Downloading ${BOLD}${asset_name}${NORMAL}..."
   curl -#SL -H "$AUTH" -H "Accept: application/octet-stream" \
      "https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/assets/$id" \
-     -o "$asset_name" -L --create-dirs --output "$zip_location"
+     -L --create-dirs --output "$zip_location"
 
   echo "Deflating downloaded archive"
   tar -xvf "$zip_location" -C "$tmp_dir"
