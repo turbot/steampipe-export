@@ -1,13 +1,15 @@
-# Steampipe Table Dump (spdump)
+# Steampipe Exporter
 
-This repository contains a tool for data dumping from Steampipe plugins. It allows you to query and export data from Steampipe plugins.
+A Steampipe exporter fetches data from cloud services and APIs. Each exporter is a standalone binary that extracts data using a Steampipe plugin. These repository enables you to build an exporter derived from a [Steampipe plugin](https://hub.steampipe.io/plugins).
 
 ## Getting Started
 
-To get started with the Steampipe Data Dump tool, you'll need to build and install it. You can do so using the provided `Makefile`. Run the following command to build the tool and install it in the specified directory (default is `/usr/local/bin`):
+If you just want to acquire and run the binary for an exporter, you can download an installer from [Steampipe downloads](https://steampipe.io/downloads). See the [installation docs](https://turbot.com/docs/steampipe_export/install) for details. 
+
+To build an exporter, use the provided `Makefile`. For example, to build the AWS exporter, run the following command to build the tool. It lands in your current directory by default, or elsewhere if you override. 
 
 ```bash
-make spdump
+make plugin=aws plugin_github_url=github.com/turbot/steampipe-plugin-aws
 ```
 
 ## Prerequisites
@@ -16,30 +18,64 @@ make spdump
 
 ## Usage
 
-### Command Line Interface
-
-The `spdump` tool is used from the command line and accepts various options and arguments. Here's an example of how to use it:
+`steampipe_export_github -h`
 
 ```bash
-spdump [flags] <table_name>
+Export data using the github plugin.
+
+Find detailed usage information including table names, column names, and
+examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/github
+
+Usage:
+  steampipe_export_github TABLE_NAME [flags]
+
+Flags:
+      --config string       Config file data
+  -h, --help                help for steampipe_export_github
+      --limit int           Limit data
+      --output string       Output format: csv, json or jsonl (default "csv")
+      --select strings      Column data to display
+      --where stringArray   where clause data
 ```
 
-**Flags**
+## Examples
 
-* `config`: Specifies the configuration file for the tool. You can provide a file path to load configuration settings.
-* `limit`: Sets a limit on the number of rows to retrieve. Useful when you want to restrict the amount of data fetched.
-* `select`: Lets you specify the columns you want to display in the output. You can provide a comma-separated list of column names.
-* `where`: Allows you to define a WHERE clause to filter the data you want to query. For example, you can filter based on specific conditions.
-
-Example
+### Export EC2 instances using an AWS profile
 
 ```bash
-spdump aws_s3_bucket --select name,arn,region,account_id --limit 100
+./steampipe_export_aws aws_ec2_instance \
+  --config='profile="dundermifflin"'
 ```
+
+### Filter to running instances
+
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config='profile="dundermifflin"' \
+  --where="instance_state='running'"
+```
+
+### Select a subset of columns
+
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config 'profile="dundermifflin"' \
+  --where "instance_state='running'" \
+  --select "arn,instance_state"
+```
+
+### Limit results
+
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config 'profile="dundermifflin"' \
+  --where "instance_state='running'" \
+  --select "arn,instance_state" \
+  --limit 10
+```
+
 
 ## Contributing
-If you would like to contribute to this project, please open an issue or create a pull request. We welcome any improvements or bug fixes.
+If you would like to contribute to this project, please open an issue or create a pull request. We welcome any improvements or bug fixes. Contributions are subject to the [Apache-2.0](https://opensource.org/license/apache-2-0/) license.
 
-## License
-This project is licensed under the [Apache 2.0 open source license](https://github.com/turbot/steampipe-table-dump/blob/main/LICENSE) - see the LICENSE file for details.
 
