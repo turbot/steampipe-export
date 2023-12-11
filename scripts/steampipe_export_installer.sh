@@ -12,11 +12,6 @@ main() {
     exit 1
   fi
 
-  if ! command -v jq >/dev/null 2>&1; then
-    echo "Error: 'jq' is required." 1>&2
-    exit 1
-  fi
-
   OS=$(uname -s)
   if [ "$OS" = "Windows_NT" ]; then
     echo "Error: Windows is not supported yet." 1>&2
@@ -76,34 +71,20 @@ main() {
     *) echo "Error: steampipe_export_${plugin} is not supported on '$(uname -s)' yet." 1>&2; exit 1 ;;
   esac
 
+  asset_name="steampipe_export_${plugin}.${target}"
   # Generate the URI for the binary
   if [ "$version" = "latest" ]; then
-    uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/latest"
-    asset_name="steampipe_export_${plugin}.${target}"
+    uri="https://github.com/turbot/steampipe-plugin-${plugin}/releases/latest/download/${asset_name}"
   else
-    uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/tags/${version}"
-    asset_name="steampipe_export_${plugin}.${target}"
+    uri="https://github.com/turbot/steampipe-plugin-${plugin}/releases/download/${version}/${asset_name}"
   fi
-
-  # Read the GitHub Personal Access Token
-  GITHUB_TOKEN=${GITHUB_TOKEN:-}
-
-  if [ -z "$GITHUB_TOKEN" ]; then
-    echo ""
-    echo "Error: GITHUB_TOKEN is not set. Please set your GitHub Personal Access Token as an environment variable." 1>&2
-    exit 1
-  fi
-  AUTH="Authorization: token $GITHUB_TOKEN"
-
-  response=$(curl -sH "$AUTH" $uri)
-  id=$(echo "$response" | jq --arg asset_name "$asset_name" '.assets[] | select(.name == $asset_name) | .id' |  tr -d '"')
-  GH_ASSET="$uri/releases/assets/$id"
 
   echo ""
   echo "Downloading ${BOLD}${asset_name}${NORMAL}..."
-  curl -#SL -H "$AUTH" -H "Accept: application/octet-stream" \
-     "https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/assets/$id" \
-     -L --create-dirs --output "$zip_location"
+  if ! curl --fail --location --progress-bar --output ${asset_name} "$uri"; then
+    echo "Could not find version $version"
+    exit 1
+  fi
 
   echo "Deflating downloaded archive"
   tar -xvf "$zip_location" -C "$tmp_dir"
