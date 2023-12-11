@@ -1,6 +1,6 @@
 # Steampipe Export
 
-A family of export tools, each derived from a [Steampipe plugin](https://hub.steampipe.io/plugins), that fetche data from cloud services and APIs.
+A family of export tools, each derived from a [Steampipe plugin](https://hub.steampipe.io/plugins), that fetch data from cloud services and APIs.
 
 ## Getting Started
 
