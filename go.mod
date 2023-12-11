@@ -4,8 +4,6 @@ go 1.21
 
 require (
 	github.com/spf13/cobra v1.7.0
-	// standalone
-	github.com/turbot/steampipe-plugin-aws v0.120.1-0.20231011104341-8d08d363e5b4
 )
 
 require (
