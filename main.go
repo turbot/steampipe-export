@@ -12,25 +12,23 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-hclog"
-	aws "github.com/turbot/steampipe-plugin-aws/aws"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/turbot/steampipe-plugin-sdk/v5/anywhere"
+	filter2 "github.com/turbot/steampipe-plugin-sdk/v5/filter"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/logging"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
+	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
+	"github.com/turbot/steampipe/pkg/ociinstaller"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/reflect/protoreflect"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	filter2 "github.com/turbot/steampipe-plugin-sdk/v5/filter"
-	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
-	"github.com/turbot/steampipe/pkg/ociinstaller"
 )
 
 var pluginServer *grpc.PluginServer
-var pluginAlias = "aws"
+var pluginAlias = ""
 var connection = pluginAlias
 
 type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
@@ -38,8 +36,8 @@ type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
 func main() {
 	setupLogger(pluginAlias)
 	rootCmd := &cobra.Command{
-		Use:   "aws_dump TABLE_NAME [flags]",
-		Short: "Steampipe data Dump",
+		Use:   "steampipe_export TABLE_NAME [flags]",
+		Short: "Steampipe data export tool",
 		Run:   executeCommand,
 		Args:  cobra.ExactArgs(1),
 	}
@@ -52,9 +50,7 @@ func main() {
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
-	pluginServer = plugin.Server(&plugin.ServeOpts{
-		PluginFunc: aws.Plugin,
-	})
+	pluginServer = plugin.Server(&plugin.ServeOpts{})
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -505,8 +501,10 @@ func setupLogger(plugin string) {
 // mapOperator translates equivalent operator representations to a standard form.
 func mapOperator(operator string) string {
 	operatorMappings := map[string]string{
-		"like": "~~", // Map "like" to "~~"
-		// TODO PSKR: Add more mappings here as needed.
+		"like":      "~~",
+		"not like":  "!~~",
+		"ilike":     "~~*",
+		"not ilike": "!~~*",
 	}
 
 	// Check if the operator is in the mapping, if so, return the mapped value.
