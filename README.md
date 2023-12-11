@@ -67,10 +67,10 @@ Flags:
 
 ## Developing
 
-To build an export tool , use the provided `Makefile`. For example, to build the AWS tool, run the following command to build the tool. It lands in your current directory by default, or elsewhere if you override. 
+To build an export tool, use the provided `Makefile`. For example, to build the AWS tool, run the following command to build the tool. It lands in `/usr/local/bin` by default, or elsewhere if you override using the `OUTPUT_DIR` environment variable.
 
 ```bash
-make plugin=aws
+make build plugin=aws
 ```
 
 ## Prerequisites
