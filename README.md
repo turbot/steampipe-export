@@ -1,45 +1,80 @@
-# Steampipe Table Dump (spdump)
+# Steampipe Export
 
-This repository contains a tool for data dumping from Steampipe plugins. It allows you to query and export data from Steampipe plugins.
+A family of export tools, each derived from a [Steampipe plugin](https://hub.steampipe.io/plugins), that fetche data from cloud services and APIs.
 
 ## Getting Started
 
-To get started with the Steampipe Data Dump tool, you'll need to build and install it. You can do so using the provided `Makefile`. Run the following command to build the tool and install it in the specified directory (default is `/usr/local/bin`):
+You can use an installer that enables you to choose a plugin and download the export tool for that plugin. See the [installation docs](https://turbot.com/docs/steampipe_export/install) for details. 
+
+## Usage
+
+`steampipe_export_github -h`
 
 ```bash
-make spdump
+Export data using the github plugin.
+
+Find detailed usage information including table names, column names, and
+examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/github
+
+Usage:
+  steampipe_export_github TABLE_NAME [flags]
+
+Flags:
+      --config string       Config file data
+  -h, --help                help for steampipe_export_github
+      --limit int           Limit data
+      --output string       Output format: csv, json or jsonl (default "csv")
+      --select strings      Column data to display
+      --where stringArray   where clause data
+```
+
+## Examples
+
+### Export EC2 instances using an AWS profile
+
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config='profile="dundermifflin"'
+```
+
+### Filter to running instances
+
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config='profile="dundermifflin"' \
+  --where="instance_state='running'"
+```
+
+### Select a subset of columns
+
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config 'profile="dundermifflin"' \
+  --where "instance_state='running'" \
+  --select "arn,instance_state"
+```
+
+### Limit results
+
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config 'profile="dundermifflin"' \
+  --where "instance_state='running'" \
+  --select "arn,instance_state" \
+  --limit 10
+```
+
+## Developing
+
+To build an export tool, use the provided `Makefile`. For example, to build the AWS tool, run the following command to build the tool. It lands in `/usr/local/bin` by default, or elsewhere if you override using the `OUTPUT_DIR` environment variable.
+
+```bash
+make build plugin=aws
 ```
 
 ## Prerequisites
 
 - [Golang](https://golang.org/doc/install) Version 1.21 or higher.
 
-## Usage
-
-### Command Line Interface
-
-The `spdump` tool is used from the command line and accepts various options and arguments. Here's an example of how to use it:
-
-```bash
-spdump [flags] <table_name>
-```
-
-**Flags**
-
-* `config`: Specifies the configuration file for the tool. You can provide a file path to load configuration settings.
-* `limit`: Sets a limit on the number of rows to retrieve. Useful when you want to restrict the amount of data fetched.
-* `select`: Lets you specify the columns you want to display in the output. You can provide a comma-separated list of column names.
-* `where`: Allows you to define a WHERE clause to filter the data you want to query. For example, you can filter based on specific conditions.
-
-Example
-
-```bash
-spdump aws_s3_bucket --select name,arn,region,account_id --limit 100
-```
-
 ## Contributing
-If you would like to contribute to this project, please open an issue or create a pull request. We welcome any improvements or bug fixes.
-
-## License
-This project is licensed under the [Apache 2.0 open source license](https://github.com/turbot/steampipe-table-dump/blob/main/LICENSE) - see the LICENSE file for details.
-
+If you would like to contribute to this project, please open an issue or create a pull request. We welcome any improvements or bug fixes. Contributions are subject to the [Apache-2.0](https://opensource.org/license/apache-2-0/) license.
