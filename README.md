@@ -1,20 +1,11 @@
-# Steampipe Exporter
+# Steampipe Export
 
-A Steampipe exporter fetches data from cloud services and APIs. Each exporter is a standalone binary that extracts data using a Steampipe plugin. These repository enables you to build an exporter derived from a [Steampipe plugin](https://hub.steampipe.io/plugins).
+An export tool, derived from a [Steampipe plugin](https://hub.steampipe.io/plugins), that fetches data from cloud services and APIs.
 
 ## Getting Started
 
-If you just want to acquire and run the binary for an exporter, you can download an installer from [Steampipe downloads](https://steampipe.io/downloads). See the [installation docs](https://turbot.com/docs/steampipe_export/install) for details. 
+You can use an installer that enables you to choose a plugin and download the export tool for that plugin. See the [installation docs](https://turbot.com/docs/steampipe_export/install) for details. 
 
-To build an exporter, use the provided `Makefile`. For example, to build the AWS exporter, run the following command to build the tool. It lands in your current directory by default, or elsewhere if you override. 
-
-```bash
-make plugin=aws plugin_github_url=github.com/turbot/steampipe-plugin-aws
-```
-
-## Prerequisites
-
-- [Golang](https://golang.org/doc/install) Version 1.21 or higher.
 
 ## Usage
 
@@ -74,8 +65,17 @@ Flags:
   --limit 10
 ```
 
+## Developing
+
+To build an export tool , use the provided `Makefile`. For example, to build the AWS tool, run the following command to build the tool. It lands in your current directory by default, or elsewhere if you override. 
+
+```bash
+make plugin=aws
+```
+
+## Prerequisites
+
+- [Golang](https://golang.org/doc/install) Version 1.21 or higher.
 
 ## Contributing
 If you would like to contribute to this project, please open an issue or create a pull request. We welcome any improvements or bug fixes. Contributions are subject to the [Apache-2.0](https://opensource.org/license/apache-2-0/) license.
-
-
