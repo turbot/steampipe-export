@@ -1,45 +1,81 @@
-# Steampipe Table Dump (spdump)
+# Steampipe Export
 
-This repository contains a tool for data dumping from Steampipe plugins. It allows you to query and export data from Steampipe plugins.
+A family of export tools, each derived from a [Steampipe plugin](https://hub.steampipe.io/plugins), that fetch data from cloud services and APIs.
 
 ## Getting Started
 
-To get started with the Steampipe Data Dump tool, you'll need to build and install it. You can do so using the provided `Makefile`. Run the following command to build the tool and install it in the specified directory (default is `/usr/local/bin`):
+You can use an installer that enables you to choose a plugin and download the export tool for that plugin.
 
-```bash
-make spdump
-```
-
-## Prerequisites
-
-- [Golang](https://golang.org/doc/install) Version 1.21 or higher.
+[Installation guide →](https://steampipe.io/docs/steampipe_export/install)
 
 ## Usage
 
-### Command Line Interface
-
-The `spdump` tool is used from the command line and accepts various options and arguments. Here's an example of how to use it:
+`steampipe_export_github -h`
 
 ```bash
-spdump [flags] <table_name>
+Export data using the github plugin.
+
+Find detailed usage information including table names, column names, and
+examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/github
+
+Usage:
+  steampipe_export_github TABLE_NAME [flags]
+
+Flags:
+      --config string       Config file data
+  -h, --help                help for steampipe_export_github
+      --limit int           Limit data
+      --output string       Output format: csv, json or jsonl (default "csv")
+      --select strings      Column data to display
+      --where stringArray   where clause data
 ```
 
-**Flags**
+## Examples
 
-* `config`: Specifies the configuration file for the tool. You can provide a file path to load configuration settings.
-* `limit`: Sets a limit on the number of rows to retrieve. Useful when you want to restrict the amount of data fetched.
-* `select`: Lets you specify the columns you want to display in the output. You can provide a comma-separated list of column names.
-* `where`: Allows you to define a WHERE clause to filter the data you want to query. For example, you can filter based on specific conditions.
-
-Example
+### Export EC2 instances using an AWS profile
 
 ```bash
-spdump aws_s3_bucket --select name,arn,region,account_id --limit 100
+./steampipe_export_aws aws_ec2_instance \
+  --config='profile="dundermifflin"'
 ```
 
-## Contributing
-If you would like to contribute to this project, please open an issue or create a pull request. We welcome any improvements or bug fixes.
+### Filter to running instances
 
-## License
-This project is licensed under the [Apache 2.0 open source license](https://github.com/turbot/steampipe-table-dump/blob/main/LICENSE) - see the LICENSE file for details.
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config='profile="dundermifflin"' \
+  --where="instance_state='running'"
+```
 
+### Select a subset of columns
+
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config 'profile="dundermifflin"' \
+  --where "instance_state='running'" \
+  --select "arn,instance_state"
+```
+
+### Limit results
+
+```bash
+./steampipe_export_aws aws_ec2_instance \
+  --config 'profile="dundermifflin"' \
+  --where "instance_state='running'" \
+  --select "arn,instance_state" \
+  --limit 10
+```
+
+## Developing
+
+To build an export tool, use the provided `Makefile`. For example, to build the AWS tool, run the following command to build the tool. It lands in `/usr/local/bin` by default, or elsewhere if you override using the `OUTPUT_DIR` environment variable.
+
+```bash
+make build plugin=aws
+```
+
+## Open Source & Contributing
+
+This repository is published under the [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) license. Please see our [code of conduct](https://github.com/turbot/.github/blob/main/CODE_OF_CONDUCT.md). We look forward to collaborating with you!
+
+[Steampipe](https://steampipe.io) is a product produced exclusively by [Turbot HQ, Inc](https://turbot.com). It is distributed under our commercial terms. Others are allowed to make their own distribution of the software, but cannot use any of the Turbot trademarks, cloud services, etc. You can learn more in our [Open Source FAQ](https://turbot.com/open-source).
