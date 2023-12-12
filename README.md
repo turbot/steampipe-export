@@ -6,7 +6,7 @@ A family of export tools, each derived from a [Steampipe plugin](https://hub.ste
 
 You can use an installer that enables you to choose a plugin and download the export tool for that plugin.
 
-[Installation guide →](https://steampipe.io/docs/steampipe_export/install)
+**[Installation guide →](https://steampipe.io/docs/steampipe_export/install)**
 
 ## Usage
 
