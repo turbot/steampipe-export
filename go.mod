@@ -1,4 +1,4 @@
-module github.com/turbot/steampipe-table-dump
+module github.com/turbot/steampipe-export
 
 go 1.21
 
@@ -154,6 +154,21 @@ require (
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/turbot/steampipe v0.21.1
+	// branch rm_tf
+	github.com/turbot/steampipe v1.7.0-rc.0.0.20231212143618-3a6cb7f40234
 	github.com/turbot/steampipe-plugin-sdk/v5 v5.8.0
+)
+
+replace (
+	github.com/chronark/vercel-go => github.com/judell/vercel-go v0.1.4
+	github.com/containerd/nerdctl => github.com/containerd/nerdctl v0.19.0
+	github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.2
+	github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220224222438-c78f6963a1c0+incompatible
+	github.com/duosecurity/duo_api_golang => github.com/e-gineer/duo_api_golang v0.0.0-20220501141413-213eea3b2b7b
+	github.com/hashicorp/consul => github.com/hashicorp/consul v0.0.0-20171026175957-610f3c86a089
+	github.com/m-mizutani/urlscan-go => github.com/e-gineer/urlscan-go v1.0.1-0.20210701205010-6cf8288d0d10
+	github.com/mattn/go-mastodon => github.com/turbot/go-mastodon v0.0.1
+	github.com/piquette/edgr => github.com/e-gineer/edgr v0.0.2-0.20210901021602-7664639af765
+	github.com/vartanbeno/go-reddit/v2 => github.com/abhiturbot/go-reddit/v2 v2.0.0-20220917030010-f0fe7d8ac15c
+	oras.land/oras-go => oras.land/oras-go v1.1.0
 )
