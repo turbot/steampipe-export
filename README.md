@@ -76,7 +76,7 @@ make build plugin=aws
 
 ## Open Source & Contributing
 
-This repository is published under the [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0). 
+This repository is published under the [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) license. 
 
 Please see our [code of conduct](https://github.com/turbot/.github/blob/main/CODE_OF_CONDUCT.md). We look forward to collaborating with you!
 
