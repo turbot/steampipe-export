@@ -21,7 +21,6 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/logging"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
-	"github.com/turbot/steampipe/pkg/ociinstaller"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -124,7 +123,7 @@ func getSchema(table string) (*proto.TableSchema, error) {
 }
 
 func setConnectionConfig() error {
-	pluginName := ociinstaller.NewSteampipeImageRef(pluginAlias).DisplayImageRef()
+	pluginName := NewSteampipeImageRef(pluginAlias).DisplayImageRef()
 
 	connectionConfig := &proto.ConnectionConfig{
 		Connection:      connection,
