@@ -160,7 +160,7 @@ func getSchema(table string) (*proto.TableSchema, error) {
 }
 
 func setConnectionConfig() error {
-	pluginName := ociinstaller.NewSteampipeImageRef(pluginAlias).DisplayImageRef()
+	pluginName := NewSteampipeImageRef(pluginAlias).DisplayImageRef()
 
 	connectionConfig := &proto.ConnectionConfig{
 		Connection:      connection,
