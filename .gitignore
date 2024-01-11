@@ -1,3 +1,4 @@
 # Dist directory is created by goreleaser
 /dist
 .vscode/
+/work
