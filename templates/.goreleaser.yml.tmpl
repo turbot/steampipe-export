@@ -12,6 +12,8 @@ checksum:
 builds:
   - id: "steampipe_export_{{.Plugin}}"
     main: "."
+    env:
+      - CGO_ENABLED=0
     goos:
       - linux
       - darwin
