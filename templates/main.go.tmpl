@@ -26,6 +26,15 @@ import (
 	"github.com/spf13/viper"
 	filter2 "github.com/turbot/steampipe-plugin-sdk/v5/filter"
 	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
+	"github.com/turbot/steampipe-export/constants"
+)
+
+var (
+	// These variables will be set by GoReleaser.
+	version = constants.DefaultVersion
+	commit  = constants.DefaultCommit
+	date    = constants.DefaultDate
+	builtBy = constants.DefaultBuiltBy
 )
 
 var pluginServer *grpc.PluginServer
@@ -39,6 +48,8 @@ var isFirstJSONRow = true
 var isJSONStarted = false
 
 func main() {
+	// add the auto-populated version properties into viper
+	setVersionProperties()
 	setupLogger(pluginAlias)
 	rootCmd := &cobra.Command{
 		Use:   "steampipe_export_{{.Plugin}} TABLE_NAME [flags]",
@@ -50,6 +61,7 @@ examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/{{.Plugin
 `,
 		Run:   executeCommand,
 		Args:  cobra.ExactArgs(1),
+		Version: viper.GetString("main.version"),
 	}
 
 	// Define flags
@@ -58,6 +70,7 @@ examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/{{.Plugin
 	rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
 	rootCmd.PersistentFlags().StringSlice("select", nil, "Column data to display")
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
+	rootCmd.SetVersionTemplate("steampipe_export_{{.Plugin}} {{"{{"}} .Version {{"}}"}}\n")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
@@ -70,6 +83,13 @@ examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/{{.Plugin
 		os.Exit(1)
 	}
 
+}
+
+func setVersionProperties() {
+	viper.SetDefault(constants.ConfigKeyVersion, version)
+	viper.SetDefault(constants.ConfigKeyCommit, commit)
+	viper.SetDefault(constants.ConfigKeyDate, date)
+	viper.SetDefault(constants.ConfigKeyBuiltBy, builtBy)
 }
 
 func executeCommand(cmd *cobra.Command, args []string) {
