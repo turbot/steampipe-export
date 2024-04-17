@@ -9,7 +9,7 @@ BUILD_TAGS = netgo
 endif
 
 # Function to fetch the version of the plugin
-fetch_module_version = $(shell go list -m -json github.com/turbot/steampipe-plugin-{{.Plugin}} | jq --raw-output '.Version')
+fetch_module_version = $(shell go list -m -json github.com/turbot/steampipe-plugin-{{.Plugin}} | jq --raw-output '.Version | sub("^v"; "")')
 
 build:
 	$(eval VERSION=$(call fetch_module_version))

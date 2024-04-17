@@ -70,7 +70,7 @@ examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/{{.Plugin
 	rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
 	rootCmd.PersistentFlags().StringSlice("select", nil, "Column data to display")
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
-	rootCmd.SetVersionTemplate("steampipe_export_{{.Plugin}} {{"{{"}} .Version {{"}}"}}\n")
+	rootCmd.SetVersionTemplate("steampipe_export_{{.Plugin}} v{{"{{"}} .Version {{"}}"}}\n")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
