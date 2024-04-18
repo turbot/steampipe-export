@@ -22,7 +22,7 @@ builds:
       - arm64
     ldflags:
       # strip debug info for smaller binaries
-      - "-s -w -X main.version={{"{{"}} .Env.VERSION {{"}}"}} -X main.date={{"{{"}} .Date {{"}}"}} -X main.commit={{"{{"}}.Commit {{"}}"}} -X main.builtBy=goreleaser"
+      - "-s -w -X main.version={{"{{"}} .Env.GORELEASER_CURRENT_TAG {{"}}"}} -X main.date={{"{{"}} .Date {{"}}"}} -X main.commit={{"{{"}}.Commit {{"}}"}} -X main.builtBy=goreleaser"
 
 # Archive customization
 archives:
