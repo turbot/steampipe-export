@@ -21,7 +21,8 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - "-s -w"  # strip debug info for smaller binaries
+      # strip debug info for smaller binaries
+      - "-s -w -X main.version={{"{{"}} .Env.VERSION {{"}}"}} -X main.date={{"{{"}} .Date {{"}}"}} -X main.commit={{"{{"}}.Commit {{"}}"}} -X main.builtBy=goreleaser"
 
 # Archive customization
 archives:

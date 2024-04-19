@@ -5,8 +5,13 @@ OS := $(shell uname)
 
 # Check if the OS is Mac OS/Darwin
 ifeq ($(OS),Darwin)
-  BUILD_TAGS = netgo
+BUILD_TAGS = netgo
 endif
 
+# Function to fetch the version of the plugin
+fetch_module_version = $(shell go list -m -json github.com/turbot/steampipe-plugin-{{.Plugin}} | jq --raw-output '.Version | sub("^v"; "")')
+
 build:
-	go build -tags "$(BUILD_TAGS)" -o ${OUTPUT_DIR}/steampipe_export_{{.Plugin}}
+	$(eval VERSION=$(call fetch_module_version))
+	@echo Version is $(VERSION)
+	go build -tags "$(BUILD_TAGS)" -ldflags "-X main.version=$(VERSION)" -o ${OUTPUT_DIR}/steampipe_export_{{.Plugin}}

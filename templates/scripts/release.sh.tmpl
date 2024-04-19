@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# This script fetches the specific version of the steampipe plugin module, sets it as an environment variable, 
+# and then uses it in a GoReleaser snapshot release to ensure version consistency. This is needed since Goreleaser is 
+# run from the export repository and the version tag is pushed to the plugin repository.
+
+export VERSION=$(go list -m -json github.com/turbot/steampipe-plugin-{{.Plugin}} | jq --raw-output '.Version | sub("^v"; "")')
+echo "VERSION set to $VERSION"
+goreleaser release --snapshot --rm-dist --skip=publish
