@@ -23,8 +23,6 @@ builds:
     ldflags:
       # strip debug info for smaller binaries
       - "-s -w -X main.version={{"{{"}} .Env.VERSION {{"}}"}} -X main.date={{"{{"}} .Date {{"}}"}} -X main.commit={{"{{"}}.Commit {{"}}"}} -X main.builtBy=goreleaser"
-    flags:
-      - -tags=netgo
 
 # Archive customization
 archives:
