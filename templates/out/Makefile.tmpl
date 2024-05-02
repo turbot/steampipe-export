@@ -3,10 +3,8 @@ OUTPUT_DIR?=/usr/local/bin
 # Determine the operating system
 OS := $(shell uname)
 
-# Check if the OS is Mac OS/Darwin
-ifeq ($(OS),Darwin)
+# Always enable netgo for the build
 BUILD_TAGS = netgo
-endif
 
 # Function to fetch the version of the plugin
 fetch_module_version = $(shell go list -m -json github.com/turbot/steampipe-plugin-{{.Plugin}} | jq --raw-output '.Version | sub("^v"; "")')
