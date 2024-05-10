@@ -19,6 +19,9 @@ build: validate_plugin
 	go mod tidy && \
 	$(MAKE) -f out/Makefile build
 
+	# Copy the created goreleaser from the work directory
+	cp work/.goreleaser.yml .
+
 	# Note: The work directory will contain the full code tree with changes, 
 	# binaries will be copied to /usr/local/bin.
 
