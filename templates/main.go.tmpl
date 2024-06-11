@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	encoding_csv "encoding/csv"
+	"strings"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -153,16 +154,17 @@ func buildQuals(whereClauses []string, schema *proto.TableSchema) (map[string]*p
 
 func getColumns(schema *proto.TableSchema) ([]string, error) {
 	var columns = viper.GetStringSlice("select")
-	if len(columns) != 0 {
-		tableColumn := schema.GetColumnNames()
+	if len(columns) == 0 {
+		log.Printf("[INFO] getColumns: selecting all columns")
+		columns = schema.GetColumnNames()
+	} else {
+		tableColumns := schema.GetColumnMap()
+		log.Printf("[INFO] %s getColumns: tableColumns %s", strings.Join(maps.Keys(tableColumns), ","))
 		for _, item := range columns {
-			if !slices.Contains(tableColumn, item) {
+			if _, ok := tableColumns[item]; !ok {
 				return nil, fmt.Errorf("column %s does not exist", item)
 			}
 		}
-	}
-	if len(columns) == 0 {
-		columns = schema.GetColumnNames()
 	}
 	sort.Strings(columns)
 	return columns, nil
