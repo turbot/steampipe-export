@@ -1,9 +1,4 @@
-# Check if the 'plugin' variable is set
-validate_plugin:
-ifndef plugin
-	$(error "The 'plugin' variable is missing. Usage: make build plugin=<plugin_name>")
-endif
-
+# Default target
 build: validate_plugin
 
 	# Remove existing work dir and create a new directory for the render process
@@ -19,11 +14,14 @@ build: validate_plugin
 	go mod tidy && \
 	$(MAKE) -f out/Makefile build
 
-	# Copy the created goreleaser from the work directory
-	cp work/.goreleaser.yml .
-
 	# Note: The work directory will contain the full code tree with changes, 
 	# binaries will be copied to /usr/local/bin.
+
+# Check if the 'plugin' variable is set
+validate_plugin:
+ifndef plugin
+	$(error "The 'plugin' variable is missing. Usage: make build plugin=<plugin_name>")
+endif
 
 # render target
 render: validate_plugin
@@ -59,3 +57,9 @@ build_from_work:
 
 clean:
 	rm -rf work
+
+# this target should only be used in the release workflows, running this locally will mutate your source code.
+release: validate_plugin
+	go run generate/generator.go templates . $(plugin) $(plugin_github_url)
+	go mod tidy
+	make -f out/Makefile build
