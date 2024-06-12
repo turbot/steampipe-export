@@ -21,6 +21,7 @@ build: validate_plugin
 
 	# Copy the created goreleaser from the work directory
 	cp work/.goreleaser.yml .
+	cp work/scripts/release.sh scripts/
 
 	# Note: The work directory will contain the full code tree with changes, 
 	# binaries will be copied to /usr/local/bin.
