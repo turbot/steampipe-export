@@ -274,11 +274,7 @@ func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
 				return false
 			})
 		}
-		if val == nil {
-			res[columnName] = ""
-		} else {
-			res[columnName] = fmt.Sprintf("%v", val)
-		}
+		res[columnName] = fmt.Sprintf("%v", val)
 	}
 
 	// Prepare CSV writer
