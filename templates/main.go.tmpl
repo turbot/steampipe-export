@@ -241,6 +241,8 @@ func executeQuery(tableName string, conectionName string, columns []string, qual
 		response, err := stream.Recv()
 		if err != nil {
 			fmt.Printf("[ERROR] Error receiving data from the channel: %v", err)
+			// return a non-zero exit code
+			os.Exit(1)
 			break
 		}
 		if response == nil {
