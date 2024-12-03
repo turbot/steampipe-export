@@ -1,16 +1,15 @@
 module github.com/turbot/steampipe-export
 
-go 1.21.0
-
-toolchain go1.21.3
+go 1.22.4
 
 require (
 	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/go-hclog v1.6.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.17.0
+	github.com/turbot/steampipe-plugin-sdk/v5 v5.8.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
@@ -53,7 +52,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-getter v1.7.4 // indirect
+	github.com/hashicorp/go-getter v1.7.5 // indirect
 	github.com/hashicorp/go-plugin v1.6.0 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
@@ -109,11 +108,11 @@ require (
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/net v0.18.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.12.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
@@ -126,20 +125,4 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-)
-
-require github.com/turbot/steampipe-plugin-sdk/v5 v5.8.0
-
-replace (
-	github.com/chronark/vercel-go => github.com/judell/vercel-go v0.1.4
-	github.com/containerd/nerdctl => github.com/containerd/nerdctl v0.19.0
-	github.com/containerd/typeurl => github.com/containerd/typeurl v1.0.2
-	github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220224222438-c78f6963a1c0+incompatible
-	github.com/duosecurity/duo_api_golang => github.com/e-gineer/duo_api_golang v0.0.0-20220501141413-213eea3b2b7b
-	github.com/hashicorp/consul => github.com/hashicorp/consul v0.0.0-20171026175957-610f3c86a089
-	github.com/m-mizutani/urlscan-go => github.com/e-gineer/urlscan-go v1.0.1-0.20210701205010-6cf8288d0d10
-	github.com/mattn/go-mastodon => github.com/turbot/go-mastodon v0.0.1
-	github.com/piquette/edgr => github.com/e-gineer/edgr v0.0.2-0.20210901021602-7664639af765
-	github.com/vartanbeno/go-reddit/v2 => github.com/abhiturbot/go-reddit/v2 v2.0.0-20220917030010-f0fe7d8ac15c
-	oras.land/oras-go => oras.land/oras-go v1.1.0
 )
