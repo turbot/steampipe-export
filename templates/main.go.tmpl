@@ -503,12 +503,44 @@ func stringToQualValue(valueString string, columnType proto.ColumnType) (*proto.
 		// todo parse
 
 	case proto.ColumnType_DATETIME, proto.ColumnType_TIMESTAMP:
-		//t, err := time.Parse("Mon Jan 2 15:04:05 MST 2006", valueString)
-		//if err != nil{
-		//	return nil, err
-		//}
-		//result.Value = &proto.QualValue_TimestampValue{TimestampValue: t}
-		// todo parse
+		// Try parsing as Unix timestamp (seconds since epoch)
+		if unixTime, err := strconv.ParseInt(valueString, 10, 64); err == nil {
+			t = time.Unix(unixTime, 0)
+			ts, err := ptypes.TimestampProto(t)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert Unix time to timestamp: %v", err)
+			}
+			result.Value = &proto.QualValue_TimestampValue{TimestampValue: ts}
+			return result, nil
+		}
+		// Try parsing with multiple common time formats
+		formats := []string{
+			time.RFC3339,
+			time.RFC3339Nano,
+			"2006-01-02T15:04:05",
+			"2006-01-02 15:04:05",
+			"2006-01-02",
+			time.RFC1123,
+			time.RFC1123Z,
+			time.RFC822,
+			time.RFC822Z,
+		}
+		var t time.Time
+		var err error
+		for _, format := range formats {
+			t, err = time.Parse(format, valueString)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("could not parse time value '%s' with any supported format", valueString)
+		}
+		ts, err := ptypes.TimestampProto(t)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert time to timestamp: %v", err)
+		}
+		result.Value = &proto.QualValue_TimestampValue{TimestampValue: ts}
 	case proto.ColumnType_LTREE:
 		result.Value = &proto.QualValue_LtreeValue{LtreeValue: valueString}
 	}
