@@ -503,6 +503,8 @@ func stringToQualValue(valueString string, columnType proto.ColumnType) (*proto.
 		// todo parse
 
 	case proto.ColumnType_DATETIME, proto.ColumnType_TIMESTAMP:
+		var t time.Time
+		var err error
 		// Try parsing as Unix timestamp (seconds since epoch)
 		if unixTime, err := strconv.ParseInt(valueString, 10, 64); err == nil {
 			t = time.Unix(unixTime, 0)
@@ -525,8 +527,6 @@ func stringToQualValue(valueString string, columnType proto.ColumnType) (*proto.
 			time.RFC822,
 			time.RFC822Z,
 		}
-		var t time.Time
-		var err error
 		for _, format := range formats {
 			t, err = time.Parse(format, valueString)
 			if err == nil {
