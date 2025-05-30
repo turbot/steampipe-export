@@ -72,7 +72,7 @@ examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/{{.Plugin
 
 	// Define flags
 	rootCmd.PersistentFlags().String("config", "", "Connection config data")
-	rootCmd.PersistentFlags().String("limiter", "", "Rate limiter config data")
+	rootCmd.PersistentFlags().StringArray("limiter", []string{}, "Rate limiter config data")
 	rootCmd.PersistentFlags().StringArray("where", []string{}, "Query 'where' clause")
 	rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
 	rootCmd.PersistentFlags().StringSlice("select", nil, "Columns to display")
@@ -121,9 +121,9 @@ func executeCommand(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	limiterConfigStr := viper.GetString("limiter")
-	if limiterConfigStr != "" {
-		if err = setRateLimiters(limiterConfigStr); err != nil {
+	limiterConfigStrings := viper.GetStringSlice("limiter")
+	if len(limiterConfigStrings) > 0 {
+		if err = setRateLimiters(limiterConfigStrings); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -160,11 +160,14 @@ func executeCommand(cmd *cobra.Command, args []string) {
 	}
 }
 
-func setRateLimiters(limiterConfigStr string) error {
-
-	limiters, err := parseLimiterConfig(limiterConfigStr)
-	if err != nil {
-		return err
+func setRateLimiters(limiterConfigStrings []string) error {
+	var limiters []*pfplugin.RateLimiter
+	for _, limiterConfigStr := range limiterConfigStrings {
+		moreLimiters, err := parseLimiterConfig(limiterConfigStr)
+		if err != nil {
+			return err
+		}
+		limiters = append(limiters, moreLimiters...)
 	}
 	// for now we only use the limiter config
 	if len(limiters) == 0 {
@@ -179,7 +182,7 @@ func setRateLimiters(limiterConfigStr string) error {
 	}
 
 	// set the plugin config on the plugin server
-	_, err = pluginServer.SetRateLimiters(req)
+	_, err := pluginServer.SetRateLimiters(req)
 	return err
 }
 
