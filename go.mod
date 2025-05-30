@@ -4,6 +4,11 @@ go 1.23.1
 
 toolchain go1.24.0
 
+replace (
+	github.com/turbot/pipe-fittings/v2 => ../../pipe-fittings
+	github.com/turbot/steampipe-plugin-sdk/v5 => ../../steampipe-plugin-sdk
+)
+
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/go-hclog v1.6.3
@@ -21,6 +26,7 @@ require (
 	cloud.google.com/go/storage v1.38.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
+	github.com/Microsoft/hcsshim v0.11.7 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/allegro/bigcache/v3 v3.1.0 // indirect
@@ -122,7 +128,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/tklauser/numcpus v0.3.0 // indirect
 	github.com/tkrajina/go-reflector v0.5.6 // indirect
-	github.com/turbot/go-kit v1.0.0 // indirect
+	github.com/turbot/go-kit v1.3.0 // indirect
 	github.com/turbot/pipe-fittings/v2 v2.1.1 // indirect
 	github.com/turbot/terraform-components v0.0.0-20231213122222-1f3526cab7a7 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect

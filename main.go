@@ -2,23 +2,29 @@ package main
 
 import (
 	"context"
-	encoding_csv "encoding/csv"
+	encodingcsv "encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/turbot/pipe-fittings/v2/error_helpers"
 	"log"
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/turbot/pipe-fittings/v2/parse"
+	pfplugin "github.com/turbot/pipe-fittings/v2/plugin"
 	"github.com/turbot/steampipe-export/constants"
 	"github.com/turbot/steampipe-plugin-aws/aws"
 	"github.com/turbot/steampipe-plugin-sdk/v5/anywhere"
-	filter2 "github.com/turbot/steampipe-plugin-sdk/v5/filter"
+	sdkfilter "github.com/turbot/steampipe-plugin-sdk/v5/filter"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/logging"
@@ -47,7 +53,7 @@ type displayRowFunc func(row *proto.ExecuteResponse, columns []string) error
 var isFirstJSONRow = true
 var isJSONStarted = false
 
-func main() {
+func main_() {
 	// add the auto-populated version properties into viper
 	setVersionProperties()
 	setupLogger(pluginAlias)
@@ -65,11 +71,12 @@ examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/aws
 	}
 
 	// Define flags
-	rootCmd.PersistentFlags().String("config", "", "Config file data")
-	rootCmd.PersistentFlags().StringArray("where", []string{}, "where clause data")
+	rootCmd.PersistentFlags().String("config", "", "Connection config data")
+	rootCmd.PersistentFlags().String("limiter", "", "Plugin config data")
+	rootCmd.PersistentFlags().StringArray("where", []string{}, "Query 'where' clause")
 	rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
-	rootCmd.PersistentFlags().StringSlice("select", nil, "Column data to display")
-	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
+	rootCmd.PersistentFlags().StringSlice("select", nil, "Columns to display")
+	rootCmd.PersistentFlags().Int("limit", 0, "Query limit")
 	rootCmd.SetVersionTemplate("steampipe_export_aws v{{ .Version }}\n")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
@@ -116,35 +123,144 @@ func executeCommand(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	limiterConfigStr := viper.GetString("limiter")
+	if limiterConfigStr != "" {
+		if err = setRateLimiters(limiterConfigStr); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+	}
+
+	var displayFunc displayRowFunc
+	var onCompleteFunc func() error
 	outputFormat := viper.GetString("output")
 	switch outputFormat {
 	case "json":
-		if err := executeQuery(table, connection, columns, quals, displayJSONRow); err != nil {
-			fmt.Printf("[ERROR] Error executing query: %v", err)
-			os.Exit(1)
-		}
-		if err := finishJSONOutput(); err != nil {
-			fmt.Printf("[ERROR] Error finishing JSON output: %v", err)
-			os.Exit(1)
-		}
+		displayFunc = displayJSONRow
+		onCompleteFunc = finishJSONOutput
 	case "jsonl":
-		if err := executeQuery(table, connection, columns, quals, displayJSONLRow); err != nil {
-			fmt.Printf("[ERROR] Error executing query: %v", err)
-			os.Exit(1)
-		}
+		displayFunc = displayJSONLRow
 	case "csv":
-		if err := executeQuery(table, connection, columns, quals, displayCSVRow); err != nil {
-			fmt.Printf("[ERROR] Error executing query: %v", err)
-			os.Exit(1)
-		}
+		displayFunc = displayCSVRow
 	default:
 		fmt.Printf("Unsupported output format: %s\n", outputFormat)
 		os.Exit(1)
 	}
+
+	// execute the query
+	if err := executeQuery(table, connection, columns, quals, displayFunc); err != nil {
+		fmt.Printf("[ERROR] Error executing query: %v", err)
+		os.Exit(1)
+	}
+
+	// finalize the output if needed
+	if onCompleteFunc != nil {
+		if err := finishJSONOutput(); err != nil {
+			fmt.Printf("[ERROR] Error finishing JSON output: %v", err)
+			os.Exit(1)
+		}
+	}
+}
+
+func setRateLimiters(limiterConfigStr string) error {
+
+	limiters, err := parseLimiterConfig(limiterConfigStr)
+	if err != nil {
+		return err
+	}
+	// for now we only use the limiter config
+	if len(limiters) == 0 {
+		return nil
+	}
+	// build a SetRateLimitersRequest
+	req := &proto.SetRateLimitersRequest{
+		Definitions: make([]*proto.RateLimiterDefinition, len(limiters)),
+	}
+	for i, l := range limiters {
+		req.Definitions[i] = RateLimiterAsProto(l)
+	}
+
+	// set the plugin config on the plugin server
+	_, err = pluginServer.SetRateLimiters(req)
+	return err
+}
+
+func parseLimiterConfig(configString string) ([]*pfplugin.RateLimiter, error) {
+	parser := hclparse.NewParser()
+	cfg, err := unescapeConfig(configString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unescape plugin config: %w", err)
+	}
+	file, diags := parser.ParseHCL([]byte(cfg), "input.hcl")
+	if diags.HasErrors() {
+		return nil, error_helpers.HclDiagsToError("failed to parse plugin config", diags)
+	}
+
+	content, _, contentDiags := file.Body.PartialContent(&hcl.BodySchema{
+		Blocks: []hcl.BlockHeaderSchema{
+			{
+				Type:       "limiter", // Replace with your block type
+				LabelNames: []string{"name"},
+			},
+		},
+	})
+	if contentDiags.HasErrors() {
+		return nil, contentDiags
+	}
+
+	if len(content.Blocks) == 0 {
+		return nil, hcl.Diagnostics{}
+	}
+
+	var limiters []*pfplugin.RateLimiter
+	for _, block := range content.Blocks {
+		if block.Type != "limiter" {
+			continue // Skip blocks that are not of type "limiter"
+		}
+
+		l, moreDiags := parse.DecodeLimiter(block)
+		if moreDiags.HasErrors() {
+			diags = append(diags, moreDiags...)
+			continue // Skip this block if there are errors
+		}
+		limiters = append(limiters, l)
+	}
+	if diags.HasErrors() {
+		return nil, error_helpers.HclDiagsToError("failed to parse plugin config", diags)
+	}
+	return limiters, nil
+}
+
+func unescapeConfig(s string) (string, error) {
+	// Wrap in quotes and use strconv.Unquote to unescape
+	return strconv.Unquote(`"` + strings.ReplaceAll(s, `"`, `\"`) + `"`)
+}
+
+func RateLimiterAsProto(l *pfplugin.RateLimiter) *proto.RateLimiterDefinition {
+	res := &proto.RateLimiterDefinition{
+		Name:  l.Name,
+		Scope: l.Scope,
+	}
+	if l.MaxConcurrency != nil {
+		res.MaxConcurrency = *l.MaxConcurrency
+	}
+	if l.BucketSize != nil {
+		res.BucketSize = *l.BucketSize
+	}
+	if l.FillRate != nil {
+		res.FillRate = *l.FillRate
+	}
+	if l.Where != nil {
+		res.Where = *l.Where
+	}
+
+	return res
 }
 
 func buildQuals(whereClauses []string, schema *proto.TableSchema) (map[string]*proto.Quals, error) {
-	var quals map[string]*proto.Quals = make(map[string]*proto.Quals)
+	var quals = make(map[string]*proto.Quals)
 	if len(whereClauses) > 0 {
 		for _, whereFlag := range whereClauses {
 			qual, err := filterStringToQuals(whereFlag, schema)
@@ -312,7 +428,7 @@ func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) error {
 	}
 
 	// Prepare CSV writer
-	writer := encoding_csv.NewWriter(os.Stdout)
+	writer := encodingcsv.NewWriter(os.Stdout)
 	defer writer.Flush()
 
 	// Write headers
@@ -369,7 +485,7 @@ func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string
 	columnMap := tableSchema.GetColumnMap()
 	keyColumns := tableSchema.GetAllKeyColumns()
 
-	parsed, err := filter2.Parse("", []byte(raw))
+	parsed, err := sdkfilter.Parse("", []byte(raw))
 	if err != nil {
 		log.Printf("err %v", err)
 		return nil, sperr.New("failed to parse 'where' property: %s", err.Error())
@@ -377,7 +493,7 @@ func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string
 
 	// convert table schema into a column map
 
-	filter := parsed.(filter2.ComparisonNode)
+	filter := parsed.(sdkfilter.ComparisonNode)
 	log.Println(filter)
 	var qual *proto.Qual
 	var column string
@@ -385,7 +501,7 @@ func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string
 	switch filter.Type {
 
 	case "compare", "like":
-		codeNodes, ok := filter.Values.([]filter2.CodeNode)
+		codeNodes, ok := filter.Values.([]sdkfilter.CodeNode)
 		if !ok {
 			return nil, fmt.Errorf("failed to parse filter")
 		}
@@ -425,7 +541,7 @@ func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string
 		if filter.Operator.Value == "not in" {
 			return nil, fmt.Errorf("failed to convert 'where' arg to qual - 'not in' is not supported")
 		}
-		codeNodes, ok := filter.Values.([]filter2.CodeNode)
+		codeNodes, ok := filter.Values.([]sdkfilter.CodeNode)
 		if !ok || len(codeNodes) < 2 {
 			return nil, fmt.Errorf("failed to parse filter")
 		}
