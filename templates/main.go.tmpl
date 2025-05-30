@@ -235,7 +235,7 @@ func executeQuery(tableName string, conectionName string, columns []string, qual
 		Table:                 tableName,
 		QueryContext:          queryContext,
 		CallId:                grpc.BuildCallId(),
-		Connection:            conectionName,
+		Connection:            connectionName,
 		TraceContext:          nil,
 		ExecuteConnectionData: make(map[string]*proto.ExecuteConnectionData),
 	}

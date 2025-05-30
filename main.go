@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	encoding_csv "encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -14,6 +15,8 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/turbot/steampipe-export/constants"
+	"github.com/turbot/steampipe-plugin-aws/aws"
 	"github.com/turbot/steampipe-plugin-sdk/v5/anywhere"
 	filter2 "github.com/turbot/steampipe-plugin-sdk/v5/filter"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
@@ -26,30 +29,54 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+var (
+	// These variables will be set by GoReleaser.
+	version = constants.DefaultVersion
+	commit  = constants.DefaultCommit
+	date    = constants.DefaultDate
+	builtBy = constants.DefaultBuiltBy
+)
+
 var pluginServer *grpc.PluginServer
-var pluginAlias = ""
+var pluginAlias = "aws"
 var connection = pluginAlias
 
-type displayRowFunc func(row *proto.ExecuteResponse, columns []string)
+type displayRowFunc func(row *proto.ExecuteResponse, columns []string) error
+
+// Global variables to manage the state of JSON output
+var isFirstJSONRow = true
+var isJSONStarted = false
 
 func main() {
+	// add the auto-populated version properties into viper
+	setVersionProperties()
 	setupLogger(pluginAlias)
 	rootCmd := &cobra.Command{
-		Use:   "steampipe_export TABLE_NAME [flags]",
-		Short: "Steampipe data export tool",
-		Run:   executeCommand,
-		Args:  cobra.ExactArgs(1),
+		Use:   "steampipe_export_aws TABLE_NAME [flags]",
+		Short: "Steampipe export aws",
+		Long: `Export data using the aws plugin.
+
+Find detailed usage information including table names, column names, and 
+examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/aws
+`,
+		Run:     executeCommand,
+		Args:    cobra.ExactArgs(1),
+		Version: viper.GetString("main.version"),
 	}
 
 	// Define flags
 	rootCmd.PersistentFlags().String("config", "", "Config file data")
-	rootCmd.PersistentFlags().String("where", "", "where clause data")
+	rootCmd.PersistentFlags().StringArray("where", []string{}, "where clause data")
+	rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
 	rootCmd.PersistentFlags().StringSlice("select", nil, "Column data to display")
 	rootCmd.PersistentFlags().Int("limit", 0, "Limit data")
+	rootCmd.SetVersionTemplate("steampipe_export_aws v{{ .Version }}\n")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
-	pluginServer = plugin.Server(&plugin.ServeOpts{})
+	pluginServer = plugin.Server(&plugin.ServeOpts{
+		PluginFunc: aws.Plugin,
+	})
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -58,40 +85,82 @@ func main() {
 
 }
 
+func setVersionProperties() {
+	viper.SetDefault(constants.ConfigKeyVersion, version)
+	viper.SetDefault(constants.ConfigKeyCommit, commit)
+	viper.SetDefault(constants.ConfigKeyDate, date)
+	viper.SetDefault(constants.ConfigKeyBuiltBy, builtBy)
+}
+
 func executeCommand(cmd *cobra.Command, args []string) {
 	// TODO template
-
 	table := args[0]
 	if err := setConnectionConfig(); err != nil {
 		// TODO display error
 		fmt.Println(err)
-		os.Exit((1))
+		os.Exit(1)
 	}
-
 	schema, err := getSchema(table)
 	if err != nil {
 		// TODO display error
 		fmt.Println(err)
-		os.Exit((1))
+		os.Exit(1)
 	}
-
 	columns, err := getColumns(schema)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	var qual map[string]*proto.Quals
-	if viper.GetString("where") != "" {
-		whereFlag := viper.GetString("where")
-		qual, err = filterStringToQuals(whereFlag, schema)
-		if err != nil {
-			fmt.Println(err)
+	quals, err := buildQuals(viper.GetStringSlice("where"), schema)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	outputFormat := viper.GetString("output")
+	switch outputFormat {
+	case "json":
+		if err := executeQuery(table, connection, columns, quals, displayJSONRow); err != nil {
+			fmt.Printf("[ERROR] Error executing query: %v", err)
 			os.Exit(1)
 		}
+		if err := finishJSONOutput(); err != nil {
+			fmt.Printf("[ERROR] Error finishing JSON output: %v", err)
+			os.Exit(1)
+		}
+	case "jsonl":
+		if err := executeQuery(table, connection, columns, quals, displayJSONLRow); err != nil {
+			fmt.Printf("[ERROR] Error executing query: %v", err)
+			os.Exit(1)
+		}
+	case "csv":
+		if err := executeQuery(table, connection, columns, quals, displayCSVRow); err != nil {
+			fmt.Printf("[ERROR] Error executing query: %v", err)
+			os.Exit(1)
+		}
+	default:
+		fmt.Printf("Unsupported output format: %s\n", outputFormat)
+		os.Exit(1)
 	}
+}
 
-	executeQuery(table, connection, columns, qual, displayCSVRow)
+func buildQuals(whereClauses []string, schema *proto.TableSchema) (map[string]*proto.Quals, error) {
+	var quals = make(map[string]*proto.Quals)
+	if len(whereClauses) > 0 {
+		for _, whereFlag := range whereClauses {
+			qual, err := filterStringToQuals(whereFlag, schema)
+			if err != nil {
+				return nil, err
+			}
+			for columnName, q := range qual {
+				if zQual, found := quals[columnName]; found {
+					zQual.Quals = append(zQual.Quals, q.Quals...)
+				} else {
+					quals[columnName] = q
+				}
+			}
+		}
+	}
+	return quals, nil
 }
 
 func getColumns(schema *proto.TableSchema) ([]string, error) {
@@ -146,7 +215,7 @@ func setConnectionConfig() error {
 	return nil
 }
 
-func executeQuery(tableName string, conectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) {
+func executeQuery(tableName string, conectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) error {
 	// construct execute request
 
 	var qualMap = map[string]*proto.Quals{}
@@ -166,7 +235,7 @@ func executeQuery(tableName string, conectionName string, columns []string, qual
 		Table:                 tableName,
 		QueryContext:          queryContext,
 		CallId:                grpc.BuildCallId(),
-		Connection:            conectionName,
+		Connection:            connectionName,
 		TraceContext:          nil,
 		ExecuteConnectionData: make(map[string]*proto.ExecuteConnectionData),
 	}
@@ -179,23 +248,45 @@ func executeQuery(tableName string, conectionName string, columns []string, qual
 	ctx := context.Background()
 	stream := anywhere.NewLocalPluginStream(ctx)
 	pluginServer.CallExecuteAsync(req, stream)
-	for {
 
+	// Wait for first row or error
+	select {
+	case <-stream.Ready():
+		// Stream is ready to receive data
+	case <-ctx.Done():
+		fmt.Printf("[ERROR] Context cancelled while waiting for stream: %v", ctx.Err())
+		return ctx.Err()
+	}
+
+	for {
 		response, err := stream.Recv()
 		if err != nil {
 			fmt.Printf("[ERROR] Error receiving data from the channel: %v", err)
-			break
+			return err
 		}
 		if response == nil {
+			// Stream is complete
 			break
 		}
-		displayRow(response, columns)
+		if err := displayRow(response, columns); err != nil {
+			fmt.Printf("[ERROR] Error displaying row: %v", err)
+			return err
+		}
 	}
+
+	// Check for any errors that might have occurred during streaming
+	_, err := stream.Recv()
+	if err != nil {
+		fmt.Printf("[ERROR] Error after stream completion: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 var rowCount = 0
 
-func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
+func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) error {
 	row := displayRow.Row
 	selectColumns := viper.GetStringSlice("select")
 
@@ -228,15 +319,19 @@ func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
 	if rowCount == 0 {
 		if len(selectColumns) > 0 {
 			// Write headers based on selectColumns
-			writer.Write(selectColumns)
+			if err := writer.Write(selectColumns); err != nil {
+				return fmt.Errorf("error writing headers: %v", err)
+			}
 		} else {
 			// Write all headers
-			writer.Write(columns)
+			if err := writer.Write(columns); err != nil {
+				return fmt.Errorf("error writing headers: %v", err)
+			}
 		}
 		writer.Flush()
 
 		if err := writer.Error(); err != nil {
-			fmt.Println(err)
+			return fmt.Errorf("error flushing headers: %v", err)
 		}
 	}
 
@@ -257,13 +352,17 @@ func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) {
 	}
 
 	// Write the row data
-	writer.Write(colVals)
+	if err := writer.Write(colVals); err != nil {
+		return fmt.Errorf("error writing row data: %v", err)
+	}
 	writer.Flush()
 
 	// Handle potential errors from the writer
 	if err := writer.Error(); err != nil {
-		fmt.Println(err)
+		return fmt.Errorf("error flushing row data: %v", err)
 	}
+
+	return nil
 }
 
 func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string]*proto.Quals, error) {
@@ -444,12 +543,44 @@ func stringToQualValue(valueString string, columnType proto.ColumnType) (*proto.
 		// todo parse
 
 	case proto.ColumnType_DATETIME, proto.ColumnType_TIMESTAMP:
-		//t, err := time.Parse("Mon Jan 2 15:04:05 MST 2006", valueString)
-		//if err != nil{
-		//	return nil, err
-		//}
-		//result.Value = &proto.QualValue_TimestampValue{TimestampValue: t}
-		// todo parse
+		var t time.Time
+		var err error
+		// Try parsing as Unix timestamp (seconds since epoch)
+		if unixTime, err := strconv.ParseInt(valueString, 10, 64); err == nil {
+			t = time.Unix(unixTime, 0)
+			ts, err := ptypes.TimestampProto(t)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert Unix time to timestamp: %v", err)
+			}
+			result.Value = &proto.QualValue_TimestampValue{TimestampValue: ts}
+			return result, nil
+		}
+		// Try parsing with multiple common time formats
+		formats := []string{
+			time.RFC3339,
+			time.RFC3339Nano,
+			"2006-01-02T15:04:05",
+			"2006-01-02 15:04:05",
+			"2006-01-02",
+			time.RFC1123,
+			time.RFC1123Z,
+			time.RFC822,
+			time.RFC822Z,
+		}
+		for _, format := range formats {
+			t, err = time.Parse(format, valueString)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("could not parse time value '%s' with any supported format", valueString)
+		}
+		ts, err := ptypes.TimestampProto(t)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert time to timestamp: %v", err)
+		}
+		result.Value = &proto.QualValue_TimestampValue{TimestampValue: ts}
 	case proto.ColumnType_LTREE:
 		result.Value = &proto.QualValue_LtreeValue{LtreeValue: valueString}
 	}
@@ -500,10 +631,8 @@ func setupLogger(plugin string) {
 // mapOperator translates equivalent operator representations to a standard form.
 func mapOperator(operator string) string {
 	operatorMappings := map[string]string{
-		"like":      "~~",
-		"not like":  "!~~",
-		"ilike":     "~~*",
-		"not ilike": "!~~*",
+		"like": "~~", // Map "like" to "~~"
+		// TODO PSKR: Add more mappings here as needed.
 	}
 
 	// Check if the operator is in the mapping, if so, return the mapped value.
@@ -518,4 +647,119 @@ func mapOperator(operator string) string {
 func isOperatorSupported(keyColumns []string, mappedOperator string) bool {
 	// Check if the mapped operator is supported.
 	return slices.Contains(keyColumns, mappedOperator)
+}
+
+// displayJSONRow formats and outputs the row data in JSON format, managing array formatting.
+func displayJSONRow(displayRow *proto.ExecuteResponse, columns []string) error {
+	row := displayRow.Row
+	selectColumns := viper.GetStringSlice("select")
+
+	// Process each column and store values in a map
+	res := make(map[string]interface{}, len(row.Columns))
+	for columnName, column := range row.Columns {
+		var val interface{}
+		if bytes := column.GetJsonValue(); bytes != nil {
+			val = string(bytes)
+		} else if timestamp := column.GetTimestampValue(); timestamp != nil {
+			val = ptypes.TimestampString(timestamp)
+		} else {
+			column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+				if descriptor.JSONName() == "nullValue" {
+					val = nil
+				} else {
+					val = v.Interface()
+				}
+				return false
+			})
+		}
+		res[columnName] = val
+	}
+
+	// Create a map for the selected columns
+	selectedRes := make(map[string]interface{})
+	if len(selectColumns) > 0 {
+		for _, columnName := range selectColumns {
+			if val, ok := res[columnName]; ok {
+				selectedRes[columnName] = val
+			}
+		}
+	} else {
+		selectedRes = res
+	}
+
+	// Convert to JSON
+	jsonData, err := json.Marshal(selectedRes)
+	if err != nil {
+		return fmt.Errorf("error marshaling JSON: %v", err)
+	}
+
+	// Print the JSON
+	if isFirstJSONRow {
+		fmt.Print("[")
+		isFirstJSONRow = false
+		isJSONStarted = true
+	} else {
+		fmt.Print(",")
+	}
+	fmt.Print(string(jsonData))
+
+	return nil
+}
+
+// Call this function at the end of your data processing to close the JSON array
+func finishJSONOutput() error {
+	if isJSONStarted {
+		fmt.Println("]")
+	}
+	return nil
+}
+
+// displayJSONLRow formats and outputs the row data in JSON Lines (JSONL) format for selected columns.
+func displayJSONLRow(displayRow *proto.ExecuteResponse, columns []string) error {
+	row := displayRow.Row
+	selectColumns := viper.GetStringSlice("select")
+
+	// Process each column and store values in a map
+	res := make(map[string]interface{}, len(row.Columns))
+	for columnName, column := range row.Columns {
+		var val interface{}
+		if bytes := column.GetJsonValue(); bytes != nil {
+			val = string(bytes)
+		} else if timestamp := column.GetTimestampValue(); timestamp != nil {
+			val = ptypes.TimestampString(timestamp)
+		} else {
+			column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+				if descriptor.JSONName() == "nullValue" {
+					val = nil
+				} else {
+					val = v.Interface()
+				}
+				return false
+			})
+		}
+		res[columnName] = val
+	}
+
+	// Create a map for the selected columns
+	selectedRes := make(map[string]interface{})
+	if len(selectColumns) > 0 {
+		for _, columnName := range selectColumns {
+			if val, ok := res[columnName]; ok {
+				selectedRes[columnName] = val
+			}
+		}
+	} else {
+		selectedRes = res
+	}
+
+	// Convert to JSON
+	jsonData, err := json.Marshal(selectedRes)
+	if err != nil {
+		return fmt.Errorf("error marshaling JSON: %v", err)
+	}
+
+	// Print the JSON line
+	fmt.Println(string(jsonData))
+
+	return nil
 }
