@@ -215,7 +215,7 @@ func setConnectionConfig() error {
 	return nil
 }
 
-func executeQuery(tableName string, conectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) error {
+func executeQuery(tableName string, connectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) error {
 	// construct execute request
 
 	var qualMap = map[string]*proto.Quals{}

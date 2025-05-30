@@ -144,7 +144,7 @@ func executeCommand(cmd *cobra.Command, args []string) {
 }
 
 func buildQuals(whereClauses []string, schema *proto.TableSchema) (map[string]*proto.Quals, error) {
-	var quals = make(map[string]*proto.Quals)
+	var quals map[string]*proto.Quals = make(map[string]*proto.Quals)
 	if len(whereClauses) > 0 {
 		for _, whereFlag := range whereClauses {
 			qual, err := filterStringToQuals(whereFlag, schema)
@@ -215,7 +215,7 @@ func setConnectionConfig() error {
 	return nil
 }
 
-func executeQuery(tableName string, conectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) error {
+func executeQuery(tableName string, connectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) error {
 	// construct execute request
 
 	var qualMap = map[string]*proto.Quals{}
