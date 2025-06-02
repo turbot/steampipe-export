@@ -46,16 +46,13 @@ func setVersionProperties() {
 }
 
 func executeCommand(_ *cobra.Command, args []string) {
-
 	table := args[0]
 	if err := setConnectionConfig(); err != nil {
-		// TODO display error
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	schema, err := getSchema(table)
 	if err != nil {
-		// TODO display error
 		fmt.Println(err)
 		os.Exit(1)
 	}

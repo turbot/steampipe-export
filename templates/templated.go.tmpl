@@ -29,12 +29,12 @@ examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/{{.Plugin
     }
 
 	// Define flags
-	rootCmd.PersistentFlags().String("config", "", "Connection config data")
-	rootCmd.PersistentFlags().String("limiter", "", "Plugin config data")
-	rootCmd.PersistentFlags().StringArray("where", []string{}, "Query 'where' clause")
-	rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
-	rootCmd.PersistentFlags().StringSlice("select", nil, "Columns to display")
-	rootCmd.PersistentFlags().Int("limit", 0, "Query limit")
+	rootCmd.PersistentFlags().String("config", "", "connection config as a HCL string")
+	rootCmd.PersistentFlags().String("limiter", "", "limiter config as a HCL string")
+	rootCmd.PersistentFlags().StringArray("where", []string{}, "query 'where' clause")
+	rootCmd.PersistentFlags().String("output", "csv", "output format: csv, json or jsonl")
+	rootCmd.PersistentFlags().StringSlice("select", nil, "columns to display")
+	rootCmd.PersistentFlags().Int("limit", 0, "query limit")
 	rootCmd.SetVersionTemplate("steampipe_export_{{.Plugin}} v{{"{{"}} .Version {{"}}"}}\n")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
