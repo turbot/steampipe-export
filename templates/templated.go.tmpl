@@ -8,7 +8,7 @@ import (
 )
 
 var pluginServer = plugin.Server(&plugin.ServeOpts{
-    PluginFunc: aws.Plugin,
+    PluginFunc: {{.Plugin}}.Plugin,
 })
 
 var pluginAlias = "{{.Plugin}}"
