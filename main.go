@@ -2,37 +2,21 @@ package main
 
 import (
 	"context"
-	encodingcsv "encoding/csv"
-	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/turbot/pipe-fittings/v2/error_helpers"
 	"log"
 	"os"
+	"slices"
 	"sort"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/turbot/pipe-fittings/v2/parse"
-	pfplugin "github.com/turbot/pipe-fittings/v2/plugin"
 	"github.com/turbot/steampipe-export/constants"
-	"github.com/turbot/steampipe-plugin-aws/aws"
 	"github.com/turbot/steampipe-plugin-sdk/v5/anywhere"
-	sdkfilter "github.com/turbot/steampipe-plugin-sdk/v5/filter"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/logging"
-	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
-	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 var (
@@ -43,53 +27,15 @@ var (
 	builtBy = constants.DefaultBuiltBy
 )
 
-var pluginServer *grpc.PluginServer
-var pluginAlias = "aws"
-var connection = pluginAlias
-
-type displayRowFunc func(row *proto.ExecuteResponse, columns []string) error
-
-// Global variables to manage the state of JSON output
-var isFirstJSONRow = true
-var isJSONStarted = false
-
-func main_() {
+func main() {
 	// add the auto-populated version properties into viper
 	setVersionProperties()
 	setupLogger(pluginAlias)
-	rootCmd := &cobra.Command{
-		Use:   "steampipe_export_aws TABLE_NAME [flags]",
-		Short: "Steampipe export aws",
-		Long: `Export data using the aws plugin.
-
-Find detailed usage information including table names, column names, and 
-examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/aws
-`,
-		Run:     executeCommand,
-		Args:    cobra.ExactArgs(1),
-		Version: viper.GetString("main.version"),
-	}
-
-	// Define flags
-	rootCmd.PersistentFlags().String("config", "", "Connection config data")
-	rootCmd.PersistentFlags().String("limiter", "", "Plugin config data")
-	rootCmd.PersistentFlags().StringArray("where", []string{}, "Query 'where' clause")
-	rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
-	rootCmd.PersistentFlags().StringSlice("select", nil, "Columns to display")
-	rootCmd.PersistentFlags().Int("limit", 0, "Query limit")
-	rootCmd.SetVersionTemplate("steampipe_export_aws v{{ .Version }}\n")
-
-	viper.BindPFlags(rootCmd.PersistentFlags())
-
-	pluginServer = plugin.Server(&plugin.ServeOpts{
-		PluginFunc: aws.Plugin,
-	})
-
+	rootCmd := setupRootCommand()
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
 }
 
 func setVersionProperties() {
@@ -99,8 +45,8 @@ func setVersionProperties() {
 	viper.SetDefault(constants.ConfigKeyBuiltBy, builtBy)
 }
 
-func executeCommand(cmd *cobra.Command, args []string) {
-	// TODO template
+func executeCommand(_ *cobra.Command, args []string) {
+
 	table := args[0]
 	if err := setConnectionConfig(); err != nil {
 		// TODO display error
@@ -162,173 +108,6 @@ func executeCommand(cmd *cobra.Command, args []string) {
 			os.Exit(1)
 		}
 	}
-}
-
-func setRateLimiters(limiterConfigStr string) error {
-
-	limiters, err := parseLimiterConfig(limiterConfigStr)
-	if err != nil {
-		return err
-	}
-	// for now we only use the limiter config
-	if len(limiters) == 0 {
-		return nil
-	}
-	// build a SetRateLimitersRequest
-	req := &proto.SetRateLimitersRequest{
-		Definitions: make([]*proto.RateLimiterDefinition, len(limiters)),
-	}
-	for i, l := range limiters {
-		req.Definitions[i] = RateLimiterAsProto(l)
-	}
-
-	// set the plugin config on the plugin server
-	_, err = pluginServer.SetRateLimiters(req)
-	return err
-}
-
-func parseLimiterConfig(configString string) ([]*pfplugin.RateLimiter, error) {
-	parser := hclparse.NewParser()
-	cfg, err := unescapeConfig(configString)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unescape plugin config: %w", err)
-	}
-	file, diags := parser.ParseHCL([]byte(cfg), "input.hcl")
-	if diags.HasErrors() {
-		return nil, error_helpers.HclDiagsToError("failed to parse plugin config", diags)
-	}
-
-	content, _, contentDiags := file.Body.PartialContent(&hcl.BodySchema{
-		Blocks: []hcl.BlockHeaderSchema{
-			{
-				Type:       "limiter", // Replace with your block type
-				LabelNames: []string{"name"},
-			},
-		},
-	})
-	if contentDiags.HasErrors() {
-		return nil, contentDiags
-	}
-
-	if len(content.Blocks) == 0 {
-		return nil, hcl.Diagnostics{}
-	}
-
-	var limiters []*pfplugin.RateLimiter
-	for _, block := range content.Blocks {
-		if block.Type != "limiter" {
-			continue // Skip blocks that are not of type "limiter"
-		}
-
-		l, moreDiags := parse.DecodeLimiter(block)
-		if moreDiags.HasErrors() {
-			diags = append(diags, moreDiags...)
-			continue // Skip this block if there are errors
-		}
-		limiters = append(limiters, l)
-	}
-	if diags.HasErrors() {
-		return nil, error_helpers.HclDiagsToError("failed to parse plugin config", diags)
-	}
-	return limiters, nil
-}
-
-func unescapeConfig(s string) (string, error) {
-	// Wrap in quotes and use strconv.Unquote to unescape
-	return strconv.Unquote(`"` + strings.ReplaceAll(s, `"`, `\"`) + `"`)
-}
-
-func RateLimiterAsProto(l *pfplugin.RateLimiter) *proto.RateLimiterDefinition {
-	res := &proto.RateLimiterDefinition{
-		Name:  l.Name,
-		Scope: l.Scope,
-	}
-	if l.MaxConcurrency != nil {
-		res.MaxConcurrency = *l.MaxConcurrency
-	}
-	if l.BucketSize != nil {
-		res.BucketSize = *l.BucketSize
-	}
-	if l.FillRate != nil {
-		res.FillRate = *l.FillRate
-	}
-	if l.Where != nil {
-		res.Where = *l.Where
-	}
-
-	return res
-}
-
-func buildQuals(whereClauses []string, schema *proto.TableSchema) (map[string]*proto.Quals, error) {
-	var quals = make(map[string]*proto.Quals)
-	if len(whereClauses) > 0 {
-		for _, whereFlag := range whereClauses {
-			qual, err := filterStringToQuals(whereFlag, schema)
-			if err != nil {
-				return nil, err
-			}
-			for columnName, q := range qual {
-				if zQual, found := quals[columnName]; found {
-					zQual.Quals = append(zQual.Quals, q.Quals...)
-				} else {
-					quals[columnName] = q
-				}
-			}
-		}
-	}
-	return quals, nil
-}
-
-func getColumns(schema *proto.TableSchema) ([]string, error) {
-	var columns = viper.GetStringSlice("select")
-	if len(columns) != 0 {
-		tableColumn := schema.GetColumnNames()
-		for _, item := range columns {
-			if !slices.Contains(tableColumn, item) {
-				return nil, fmt.Errorf("column %s does not exist", item)
-			}
-		}
-	}
-	if len(columns) == 0 {
-		columns = schema.GetColumnNames()
-	}
-	sort.Strings(columns)
-	return columns, nil
-}
-
-func getSchema(table string) (*proto.TableSchema, error) {
-	req := &proto.GetSchemaRequest{
-		Connection: connection,
-	}
-	pluginSchema, err := pluginServer.GetSchema(req)
-	if err != nil {
-		return nil, err
-	}
-	return pluginSchema.Schema.Schema[table], nil
-}
-
-func setConnectionConfig() error {
-	pluginName := NewSteampipeImageRef(pluginAlias).DisplayImageRef()
-
-	connectionConfig := &proto.ConnectionConfig{
-		Connection:      connection,
-		Plugin:          pluginName,
-		PluginShortName: pluginAlias,
-		Config:          viper.GetString("config"),
-		PluginInstance:  pluginName,
-	}
-
-	configs := []*proto.ConnectionConfig{connectionConfig}
-	req := &proto.SetAllConnectionConfigsRequest{
-		Configs: configs,
-	}
-
-	_, err := pluginServer.SetAllConnectionConfigs(req)
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func executeQuery(tableName string, connectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) error {
@@ -400,330 +179,56 @@ func executeQuery(tableName string, connectionName string, columns []string, qua
 	return nil
 }
 
-var rowCount = 0
-
-func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) error {
-	row := displayRow.Row
-	selectColumns := viper.GetStringSlice("select")
-
-	// Process each column and store values in a map
-	res := make(map[string]string, len(row.Columns))
-	for columnName, column := range row.Columns {
-		var val interface{}
-		if bytes := column.GetJsonValue(); bytes != nil {
-			val = string(bytes)
-		} else if timestamp := column.GetTimestampValue(); timestamp != nil {
-			val = ptypes.TimestampString(timestamp)
-		} else {
-			column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-				if descriptor.JSONName() == "nullValue" {
-					val = nil
-				} else {
-					val = v.Interface()
-				}
-				return false
-			})
-		}
-		res[columnName] = fmt.Sprintf("%v", val)
-	}
-
-	// Prepare CSV writer
-	writer := encodingcsv.NewWriter(os.Stdout)
-	defer writer.Flush()
-
-	// Write headers
-	if rowCount == 0 {
-		if len(selectColumns) > 0 {
-			// Write headers based on selectColumns
-			if err := writer.Write(selectColumns); err != nil {
-				return fmt.Errorf("error writing headers: %v", err)
-			}
-		} else {
-			// Write all headers
-			if err := writer.Write(columns); err != nil {
-				return fmt.Errorf("error writing headers: %v", err)
+func getColumns(schema *proto.TableSchema) ([]string, error) {
+	var columns = viper.GetStringSlice("select")
+	if len(columns) != 0 {
+		tableColumn := schema.GetColumnNames()
+		for _, item := range columns {
+			if !slices.Contains(tableColumn, item) {
+				return nil, fmt.Errorf("column %s does not exist", item)
 			}
 		}
-		writer.Flush()
-
-		if err := writer.Error(); err != nil {
-			return fmt.Errorf("error flushing headers: %v", err)
-		}
 	}
-
-	rowCount++
-
-	// Generate row data
-	var colVals []string
-	if len(selectColumns) > 0 {
-		colVals = make([]string, len(selectColumns))
-		for i, columnName := range selectColumns {
-			colVals[i], _ = res[columnName] // Using _ to ignore whether columnName is present in res
-		}
-	} else {
-		colVals = make([]string, len(columns))
-		for i, columnName := range columns {
-			colVals[i], _ = res[columnName]
-		}
+	if len(columns) == 0 {
+		columns = schema.GetColumnNames()
 	}
-
-	// Write the row data
-	if err := writer.Write(colVals); err != nil {
-		return fmt.Errorf("error writing row data: %v", err)
-	}
-	writer.Flush()
-
-	// Handle potential errors from the writer
-	if err := writer.Error(); err != nil {
-		return fmt.Errorf("error flushing row data: %v", err)
-	}
-
-	return nil
+	sort.Strings(columns)
+	return columns, nil
 }
 
-func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string]*proto.Quals, error) {
-	columnMap := tableSchema.GetColumnMap()
-	keyColumns := tableSchema.GetAllKeyColumns()
-
-	parsed, err := sdkfilter.Parse("", []byte(raw))
+func getSchema(table string) (*proto.TableSchema, error) {
+	req := &proto.GetSchemaRequest{
+		Connection: connection,
+	}
+	pluginSchema, err := pluginServer.GetSchema(req)
 	if err != nil {
-		log.Printf("err %v", err)
-		return nil, sperr.New("failed to parse 'where' property: %s", err.Error())
+		return nil, err
 	}
-
-	// convert table schema into a column map
-
-	filter := parsed.(sdkfilter.ComparisonNode)
-	log.Println(filter)
-	var qual *proto.Qual
-	var column string
-
-	switch filter.Type {
-
-	case "compare", "like":
-		codeNodes, ok := filter.Values.([]sdkfilter.CodeNode)
-		if !ok {
-			return nil, fmt.Errorf("failed to parse filter")
-		}
-		if len(codeNodes) != 2 {
-			return nil, fmt.Errorf("failed to parse filter")
-		}
-
-		column = codeNodes[0].Value
-		value := codeNodes[1].Value
-		operator := filter.Operator.Value
-
-		// map the operator
-		mappedOperator := mapOperator(operator)
-
-		// validate this qual
-		// - the column exists in the table
-		// - the column is a key column
-		// - the operator is supported
-		if err := validateQual(column, mappedOperator, columnMap, keyColumns); err != nil {
-			return nil, err
-		}
-
-		// convert the value string into a qual
-		columnType := columnMap[column].Type
-		qualValue, err := stringToQualValue(value, columnType)
-		if err != nil {
-			return nil, err
-		}
-
-		qual = &proto.Qual{
-			FieldName: column,
-			Operator:  &proto.Qual_StringValue{mappedOperator},
-			Value:     qualValue,
-		}
-
-	case "in":
-		if filter.Operator.Value == "not in" {
-			return nil, fmt.Errorf("failed to convert 'where' arg to qual - 'not in' is not supported")
-		}
-		codeNodes, ok := filter.Values.([]sdkfilter.CodeNode)
-		if !ok || len(codeNodes) < 2 {
-			return nil, fmt.Errorf("failed to parse filter")
-		}
-		column = codeNodes[0].Value
-		operator := "="
-
-		// map the operator
-		mappedOperator := mapOperator(operator)
-
-		// validate this qual
-		// - the column exists in the table
-		// - the colummn is a key column
-		// - the operator is supported
-		if err := validateQual(column, mappedOperator, columnMap, keyColumns); err != nil {
-			return nil, err
-		}
-
-		// Build look up of values
-		values := make(map[string]struct{}, len(codeNodes)-1)
-		for _, c := range codeNodes[1:] {
-			values[c.Value] = struct{}{}
-		}
-
-		// Convert these raw values into a qual
-		columnType := columnMap[column].Type
-		qualValue, err := stringToQualListValue(maps.Keys(values), columnType)
-		if err != nil {
-			return nil, err
-		}
-
-		// Create a Qual slice for the field and add the Qual to it
-		qual = &proto.Qual{
-			FieldName: column,
-			Operator:  &proto.Qual_StringValue{mappedOperator},
-			Value:     qualValue,
-		}
-
-	default:
-		return nil, fmt.Errorf("failed to convert 'where' arg to qual")
-
-	}
-
-	if qual == nil {
-		// unexpected
-		return nil, fmt.Errorf("failed to convert 'where' arg to qual")
-	}
-
-	qualmap := make(map[string]*proto.Quals)
-	qualmap[column] = &proto.Quals{Quals: []*proto.Qual{qual}}
-
-	return qualmap, nil
+	return pluginSchema.Schema.Schema[table], nil
 }
 
-// validate this qual
-// - the column exists in the table
-// - the colummn is a key column
-// - the operator is supported
-func validateQual(column, operator string, columnMap map[string]*proto.ColumnDefinition, quals []*proto.KeyColumn) error {
-	// does the column exists in the table
-	_, ok := columnMap[column]
-	if !ok {
-		return fmt.Errorf("column %s does not exist", column)
+func setConnectionConfig() error {
+	pluginName := NewSteampipeImageRef(pluginAlias).DisplayImageRef()
+
+	connectionConfig := &proto.ConnectionConfig{
+		Connection:      connection,
+		Plugin:          pluginName,
+		PluginShortName: pluginAlias,
+		Config:          viper.GetString("config"),
+		PluginInstance:  pluginName,
 	}
 
-	unsupportedOperator := false
-	// is the column is a key column
-	for _, keyColumn := range quals {
-		// is this key column for the target column
-		if keyColumn.Name == column {
-			// check the operator is supported
-			if isOperatorSupported(keyColumn.Operators, operator) {
-				// ok this qual is valid
-				return nil
-			} else {
-				unsupportedOperator = true
-			}
-		}
-	}
-	if unsupportedOperator {
-		return fmt.Errorf("key column for '%s' does not support operator '%s'", column, operator)
-	}
-	return fmt.Errorf("there is no key column defined for column '%s'", column)
-}
-
-func stringToQualValue(valueString string, columnType proto.ColumnType) (*proto.QualValue, error) {
-	result := &proto.QualValue{}
-	switch columnType {
-	case proto.ColumnType_BOOL:
-		b, err := strconv.ParseBool(valueString)
-		if err != nil {
-			return nil, err
-		}
-		result.Value = &proto.QualValue_BoolValue{BoolValue: b}
-	case proto.ColumnType_INT:
-		i, err := strconv.ParseInt(valueString, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.Value = &proto.QualValue_Int64Value{Int64Value: i}
-	case proto.ColumnType_DOUBLE:
-		f, err := strconv.ParseFloat(valueString, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.Value = &proto.QualValue_DoubleValue{DoubleValue: f}
-	case proto.ColumnType_STRING:
-		result.Value = &proto.QualValue_StringValue{StringValue: valueString}
-	case proto.ColumnType_JSON:
-		result.Value = &proto.QualValue_JsonbValue{JsonbValue: valueString}
-	case proto.ColumnType_IPADDR:
-		// todo parse
-	case proto.ColumnType_CIDR:
-		// todo parse
-	case proto.ColumnType_INET:
-		// todo parse
-
-	case proto.ColumnType_DATETIME, proto.ColumnType_TIMESTAMP:
-		var t time.Time
-		var err error
-		// Try parsing as Unix timestamp (seconds since epoch)
-		if unixTime, err := strconv.ParseInt(valueString, 10, 64); err == nil {
-			t = time.Unix(unixTime, 0)
-			ts, err := ptypes.TimestampProto(t)
-			if err != nil {
-				return nil, fmt.Errorf("failed to convert Unix time to timestamp: %v", err)
-			}
-			result.Value = &proto.QualValue_TimestampValue{TimestampValue: ts}
-			return result, nil
-		}
-		// Try parsing with multiple common time formats
-		formats := []string{
-			time.RFC3339,
-			time.RFC3339Nano,
-			"2006-01-02T15:04:05",
-			"2006-01-02 15:04:05",
-			"2006-01-02",
-			time.RFC1123,
-			time.RFC1123Z,
-			time.RFC822,
-			time.RFC822Z,
-		}
-		for _, format := range formats {
-			t, err = time.Parse(format, valueString)
-			if err == nil {
-				break
-			}
-		}
-		if err != nil {
-			return nil, fmt.Errorf("could not parse time value '%s' with any supported format", valueString)
-		}
-		ts, err := ptypes.TimestampProto(t)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert time to timestamp: %v", err)
-		}
-		result.Value = &proto.QualValue_TimestampValue{TimestampValue: ts}
-	case proto.ColumnType_LTREE:
-		result.Value = &proto.QualValue_LtreeValue{LtreeValue: valueString}
+	configs := []*proto.ConnectionConfig{connectionConfig}
+	req := &proto.SetAllConnectionConfigsRequest{
+		Configs: configs,
 	}
 
-	if result.Value == nil {
-		return nil, fmt.Errorf("faile to convert value string")
-	}
-	return result, nil
-}
+	_, err := pluginServer.SetAllConnectionConfigs(req)
 
-func stringToQualListValue(values []string, columnType proto.ColumnType) (*proto.QualValue, error) {
-	res := &proto.QualValue{
-		Value: &proto.QualValue_ListValue{
-			ListValue: &proto.QualValueList{
-				Values: make([]*proto.QualValue, len(values)),
-			},
-		},
+	if err != nil {
+		return err
 	}
-	for i, v := range values {
-		qv, err := stringToQualValue(v, columnType)
-
-		if err != nil {
-			return nil, err
-		}
-		res.Value.(*proto.QualValue_ListValue).ListValue.Values[i] = qv
-	}
-	return res, nil
+	return nil
 }
 
 func setupLogger(plugin string) {
@@ -742,140 +247,4 @@ func setupLogger(plugin string) {
 	log.SetOutput(logger.StandardWriter(&hclog.StandardLoggerOptions{InferLevels: true}))
 	log.SetPrefix("")
 	log.SetFlags(0)
-}
-
-// mapOperator translates equivalent operator representations to a standard form.
-func mapOperator(operator string) string {
-	operatorMappings := map[string]string{
-		"like": "~~", // Map "like" to "~~"
-		// TODO PSKR: Add more mappings here as needed.
-	}
-
-	// Check if the operator is in the mapping, if so, return the mapped value.
-	if mappedOperator, ok := operatorMappings[operator]; ok {
-		return mappedOperator
-	}
-
-	// If no mapping is found, return the original operator.
-	return operator
-}
-
-func isOperatorSupported(keyColumns []string, mappedOperator string) bool {
-	// Check if the mapped operator is supported.
-	return slices.Contains(keyColumns, mappedOperator)
-}
-
-// displayJSONRow formats and outputs the row data in JSON format, managing array formatting.
-func displayJSONRow(displayRow *proto.ExecuteResponse, columns []string) error {
-	row := displayRow.Row
-	selectColumns := viper.GetStringSlice("select")
-
-	// Process each column and store values in a map
-	res := make(map[string]interface{}, len(row.Columns))
-	for columnName, column := range row.Columns {
-		var val interface{}
-		if bytes := column.GetJsonValue(); bytes != nil {
-			val = string(bytes)
-		} else if timestamp := column.GetTimestampValue(); timestamp != nil {
-			val = ptypes.TimestampString(timestamp)
-		} else {
-			column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-				if descriptor.JSONName() == "nullValue" {
-					val = nil
-				} else {
-					val = v.Interface()
-				}
-				return false
-			})
-		}
-		res[columnName] = val
-	}
-
-	// Create a map for the selected columns
-	selectedRes := make(map[string]interface{})
-	if len(selectColumns) > 0 {
-		for _, columnName := range selectColumns {
-			if val, ok := res[columnName]; ok {
-				selectedRes[columnName] = val
-			}
-		}
-	} else {
-		selectedRes = res
-	}
-
-	// Convert to JSON
-	jsonData, err := json.Marshal(selectedRes)
-	if err != nil {
-		return fmt.Errorf("error marshaling JSON: %v", err)
-	}
-
-	// Print the JSON
-	if isFirstJSONRow {
-		fmt.Print("[")
-		isFirstJSONRow = false
-		isJSONStarted = true
-	} else {
-		fmt.Print(",")
-	}
-	fmt.Print(string(jsonData))
-
-	return nil
-}
-
-// Call this function at the end of your data processing to close the JSON array
-func finishJSONOutput() error {
-	if isJSONStarted {
-		fmt.Println("]")
-	}
-	return nil
-}
-
-// displayJSONLRow formats and outputs the row data in JSON Lines (JSONL) format for selected columns.
-func displayJSONLRow(displayRow *proto.ExecuteResponse, columns []string) error {
-	row := displayRow.Row
-	selectColumns := viper.GetStringSlice("select")
-
-	// Process each column and store values in a map
-	res := make(map[string]interface{}, len(row.Columns))
-	for columnName, column := range row.Columns {
-		var val interface{}
-		if bytes := column.GetJsonValue(); bytes != nil {
-			val = string(bytes)
-		} else if timestamp := column.GetTimestampValue(); timestamp != nil {
-			val = ptypes.TimestampString(timestamp)
-		} else {
-			column.ProtoReflect().Range(func(descriptor protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-				if descriptor.JSONName() == "nullValue" {
-					val = nil
-				} else {
-					val = v.Interface()
-				}
-				return false
-			})
-		}
-		res[columnName] = val
-	}
-
-	// Create a map for the selected columns
-	selectedRes := make(map[string]interface{})
-	if len(selectColumns) > 0 {
-		for _, columnName := range selectColumns {
-			if val, ok := res[columnName]; ok {
-				selectedRes[columnName] = val
-			}
-		}
-	} else {
-		selectedRes = res
-	}
-
-	// Convert to JSON
-	jsonData, err := json.Marshal(selectedRes)
-	if err != nil {
-		return fmt.Errorf("error marshaling JSON: %v", err)
-	}
-
-	// Print the JSON line
-	fmt.Println(string(jsonData))
-
-	return nil
 }

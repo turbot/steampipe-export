@@ -2,3 +2,4 @@
 /dist
 .vscode/
 /work
+templated.go
