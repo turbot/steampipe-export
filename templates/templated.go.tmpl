@@ -29,8 +29,9 @@ examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/{{.Plugin
     }
 
 	// Define flags
-	rootCmd.PersistentFlags().String("config", "", "connection config as a HCL string")
-	rootCmd.PersistentFlags().String("limiter", "", "limiter config as a HCL string")
+    rootCmd.PersistentFlags().String("connection", "", "Name of a connection defined in the config dir to use for this command")
+	rootCmd.PersistentFlags().String("config", "", "Config data for connection, defined in HCL (deprecated - use --connection instead)")
+	rootCmd.PersistentFlags().String("config-dir", "", "Directory to read config file from - defaults to $STEAMPIPE_INSTALL_DIR/config")
 	rootCmd.PersistentFlags().StringArray("where", []string{}, "query 'where' clause")
 	rootCmd.PersistentFlags().String("output", "csv", "output format: csv, json or jsonl")
 	rootCmd.PersistentFlags().StringSlice("select", nil, "columns to display")

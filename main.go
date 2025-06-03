@@ -32,6 +32,7 @@ func main() {
 	setVersionProperties()
 	setupLogger(pluginAlias)
 	rootCmd := setupRootCommand()
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -45,9 +46,11 @@ func setVersionProperties() {
 	viper.SetDefault(constants.ConfigKeyBuiltBy, builtBy)
 }
 
-func executeCommand(_ *cobra.Command, args []string) {
+func executeCommand(cmd *cobra.Command, args []string) {
 	table := args[0]
-	if err := setConnectionConfig(); err != nil {
+
+	// set the connection and rate limiter config
+	if err := setConfig(cmd.Context()); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -202,30 +205,6 @@ func getSchema(table string) (*proto.TableSchema, error) {
 		return nil, err
 	}
 	return pluginSchema.Schema.Schema[table], nil
-}
-
-func setConnectionConfig() error {
-	pluginName := NewSteampipeImageRef(pluginAlias).DisplayImageRef()
-
-	connectionConfig := &proto.ConnectionConfig{
-		Connection:      connection,
-		Plugin:          pluginName,
-		PluginShortName: pluginAlias,
-		Config:          viper.GetString("config"),
-		PluginInstance:  pluginName,
-	}
-
-	configs := []*proto.ConnectionConfig{connectionConfig}
-	req := &proto.SetAllConnectionConfigsRequest{
-		Configs: configs,
-	}
-
-	_, err := pluginServer.SetAllConnectionConfigs(req)
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func setupLogger(plugin string) {
