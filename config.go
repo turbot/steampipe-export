@@ -3,22 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
-	pfplugin "github.com/turbot/pipe-fittings/v2/plugin"
-	"log"
-	"os"
-	"path/filepath"
-
 	"github.com/spf13/viper"
-	"github.com/turbot/go-kit/files"
 	filehelpers "github.com/turbot/go-kit/files"
 	typehelpers "github.com/turbot/go-kit/types"
 	pconstants "github.com/turbot/pipe-fittings/v2/constants"
 	"github.com/turbot/pipe-fittings/v2/error_helpers"
+	"github.com/turbot/pipe-fittings/v2/filepaths"
 	"github.com/turbot/pipe-fittings/v2/modconfig"
 	pparse "github.com/turbot/pipe-fittings/v2/parse"
+	pfplugin "github.com/turbot/pipe-fittings/v2/plugin"
 	"github.com/turbot/pipe-fittings/v2/schema"
 	"github.com/turbot/pipe-fittings/v2/sperr"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"log"
+	"os"
 )
 
 // load the connection config from the config file or from the command line args,
@@ -71,6 +69,7 @@ func initConfig(ctx context.Context) error {
 // resolveConfigDir resolves the config directory from the viper config or returns the default config directory,
 // based on the STEAMPIPE_INSTALL_DIR environment variable or the default install directory.
 func resolveConfigDir() (string, error) {
+	// if config directory is set in viper, return it
 	if configDir := viper.GetString("config-dir"); configDir != "" {
 		if _, err := os.Stat(configDir); os.IsNotExist(err) {
 			return "", fmt.Errorf("config directory '%s' does not exist", configDir)
@@ -78,18 +77,8 @@ func resolveConfigDir() (string, error) {
 		return configDir, nil
 	}
 	// return the default config directory for the current install directory
-
-	// set the install directory
-	installDir := os.Getenv("STEAMPIPE_INSTALL_DIR")
-	if installDir == "" {
-		var err error
-		installDir, err = files.Tildefy("~/.steampipe")
-		if err != nil {
-			return "", fmt.Errorf("error resolving install directory: %w", err)
-		}
-	}
-
-	configFolder := filepath.Join(installDir, "config")
+	// as app_specific will have been initialised, we can use the EnsureConfigDir function to get the config directory
+	configFolder := filepaths.EnsureConfigDir()
 	return configFolder, nil
 
 }

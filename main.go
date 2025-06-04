@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/turbot/go-kit/files"
+	"github.com/turbot/pipe-fittings/v2/app_specific"
 	"log"
 	"os"
 	"slices"
@@ -59,7 +61,6 @@ func executeCommand(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-
 	columns, err := getColumns(viper.GetStringSlice("select"), schema)
 	if err != nil {
 		fmt.Println(err)
@@ -105,6 +106,10 @@ func executeCommand(cmd *cobra.Command, args []string) {
 
 // initialise parses the config, sets the connection config and rate limiters and disables query caching
 func initialise(cmd *cobra.Command) error {
+	// set app specific constants
+	if err := setAppSpecificConstants(); err != nil {
+		return err
+	}
 	// set the connection and rate limiter config
 	if err := initConfig(cmd.Context()); err != nil {
 		fmt.Println(err)
@@ -118,6 +123,32 @@ func initialise(cmd *cobra.Command) error {
 		os.Exit(1)
 	}
 	return err
+}
+
+// SetAppSpecificConstants sets app specific constants defined in pipe-fittings
+// this is required to use any app_specific properties or filepath funcitons
+func setAppSpecificConstants() error {
+	app_specific.AppName = "export"
+	app_specific.SetAppSpecificEnvVarKeys("STEAMPIPE_")
+	app_specific.ConfigExtension = ".spc"
+
+	// set the default install dir
+	defaultInstallDir, err := files.Tildefy("~/.steampipe")
+	if err != nil {
+		return fmt.Errorf("error setting default install directory: %w", err)
+	}
+
+	app_specific.DefaultInstallDir = defaultInstallDir
+
+	// check whether install-dir env has been set - if so, respect it
+	if envInstallDir, ok := os.LookupEnv(app_specific.EnvInstallDir); ok {
+		app_specific.InstallDir = envInstallDir
+	} else {
+		// NOTE: install dir will be set to configured value at the end of InitGlobalConfig
+		app_specific.InstallDir = defaultInstallDir
+	}
+
+	return nil
 }
 
 // executeQuery executes a query against the specified table and connection, using the provided columns and quals.
