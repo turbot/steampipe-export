@@ -7,7 +7,6 @@ import (
 
 	goversion "github.com/hashicorp/go-version"
 	typehelpers "github.com/turbot/go-kit/types"
-	"github.com/turbot/pipe-fittings/v2/constants"
 	"github.com/turbot/pipe-fittings/v2/modconfig"
 	"github.com/turbot/pipe-fittings/v2/ociinstaller"
 	"github.com/turbot/pipe-fittings/v2/plugin"
@@ -126,12 +125,7 @@ func (c *SteampipeConfig) initializePlugins() {
 			continue
 		}
 		// if plugin is nil, but there is no error, it must be referring to a plugin which has no instance config
-		// and is not installed - set the plugin error
 		if plugin == nil {
-			// set the Plugin to the image ref of the plugin
-			connection.Plugin = ociinstaller.NewImageRef(connection.PluginAlias).DisplayImageRef()
-			connection.Error = fmt.Errorf(constants.ConnectionErrorPluginNotInstalled)
-			log.Printf("[INFO] connection '%s' requires plugin '%s' which is not loaded and has no instance config", connection.Name, connection.PluginAlias)
 			continue
 		}
 		// set the PluginAlias on the connection
