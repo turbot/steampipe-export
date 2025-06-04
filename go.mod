@@ -5,9 +5,9 @@ go 1.23.2
 toolchain go1.24.1
 
 replace (
-	github.com/turbot/pipe-fittings/v2 => ../../pipe-fittings
-	github.com/turbot/steampipe-plugin-aws => ../../steampipe-plugin-aws
-	github.com/turbot/steampipe-plugin-sdk/v5 => ../../steampipe-plugin-sdk
+	//github.com/turbot/pipe-fittings/v2 => ../../pipe-fittings
+	//github.com/turbot/steampipe-plugin-aws => ../../steampipe-plugin-aws
+	//github.com/turbot/steampipe-plugin-sdk/v5 => ../../steampipe-plugin-sdk
 )
 
 require (

@@ -9,7 +9,6 @@ import (
 	"github.com/turbot/go-kit/helpers"
 	typehelpers "github.com/turbot/go-kit/types"
 	"github.com/turbot/pipe-fittings/v2/constants"
-	"github.com/turbot/pipe-fittings/v2/filepaths"
 	"github.com/turbot/pipe-fittings/v2/modconfig"
 	"github.com/turbot/pipe-fittings/v2/ociinstaller"
 	"github.com/turbot/pipe-fittings/v2/plugin"
@@ -95,8 +94,6 @@ func (c *SteampipeConfig) ConnectionList() []*modconfig.SteampipeConnection {
 	return res
 }
 
-var ThePlugin string
-
 // add a plugin config to PluginsInstances and Plugins
 // NOTE: this returns an error if we already have a config with the same label
 func (c *SteampipeConfig) addPlugin(plugin *plugin.Plugin) error {
@@ -104,10 +101,7 @@ func (c *SteampipeConfig) addPlugin(plugin *plugin.Plugin) error {
 		return duplicatePluginError(existingPlugin, plugin)
 	}
 
-	// get the image ref to key the map
-	if plugin.Plugin == ThePlugin {
-		c.PluginsInstances[plugin.Instance] = plugin
-	}
+	c.PluginsInstances[plugin.Instance] = plugin
 	return nil
 }
 
@@ -122,6 +116,10 @@ func duplicatePluginError(existingPlugin, newPlugin *plugin.Plugin) error {
 // NOTE: this populates the  Plugin and PluginInstance field of the connections
 func (c *SteampipeConfig) initializePlugins() {
 	for _, connection := range c.Connections {
+		if connection.PluginAlias != pluginAlias {
+			continue
+		}
+
 		plugin, err := c.resolvePluginInstanceForConnection(connection)
 		if err != nil {
 			log.Printf("[WARN] cannot resolve plugin for connection '%s': %s", connection.Name, err.Error())
@@ -143,19 +141,9 @@ func (c *SteampipeConfig) initializePlugins() {
 		pluginImageRef := plugin.Plugin
 		connection.PluginAlias = plugin.Alias
 		connection.Plugin = pluginImageRef
-		if pluginPath, _ := filepaths.GetPluginPath(pluginImageRef, plugin.Alias); pluginPath != "" {
-			// plugin is installed - set the instance and the plugin path
-			connection.PluginInstance = &plugin.Instance
-			connection.PluginPath = &pluginPath
-		} else {
-			// set the plugin error
-			connection.Error = fmt.Errorf(constants.ConnectionErrorPluginNotInstalled)
-			// leave instance unset
-			log.Printf("[INFO] connection '%s' requires plugin '%s' - this is not installed", connection.Name, plugin.Alias)
-		}
-
+		// plugin is installed - set the instance and the plugin path
+		connection.PluginInstance = &plugin.Instance
 	}
-
 }
 
 /*
@@ -189,29 +177,13 @@ func (c *SteampipeConfig) resolvePluginInstanceForConnection(connection *modconf
 		return p, nil
 	}
 
-	// resolve the image ref (this handles the special case of locally developed plugins in the plugins/local folder)
-	imageRef := plugin.ResolvePluginImageRef(connection.PluginAlias)
-
-	if imageRef != ThePlugin {
-		return nil, nil
-	}
-
 	// how many plugin instances are there
 	//pluginsForImageRef := c.Plugins[imageRef]
 
 	var p *plugin.Plugin
 	switch len(c.PluginsInstances) {
 	case 0:
-		// there is no plugin instance for this connection - add an implicit plugin instance
-		p = plugin.NewImplicitPlugin(connection.PluginAlias, imageRef)
-
-		// now add to our map
-		if err := c.addPlugin(p); err != nil {
-			// log the error but do not return it - we
-			return nil, err
-		}
-
-
+		// do nothing - return empty plugin
 	case 1:
 
 		// return the one and only plugin instance

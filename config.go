@@ -7,10 +7,8 @@ import (
 	"github.com/turbot/go-kit/files"
 	filehelpers "github.com/turbot/go-kit/files"
 	typehelpers "github.com/turbot/go-kit/types"
-	"github.com/turbot/pipe-fittings/v2/app_specific"
 	pconstants "github.com/turbot/pipe-fittings/v2/constants"
 	"github.com/turbot/pipe-fittings/v2/error_helpers"
-	pfilepaths "github.com/turbot/pipe-fittings/v2/filepaths"
 	"github.com/turbot/pipe-fittings/v2/modconfig"
 	pparse "github.com/turbot/pipe-fittings/v2/parse"
 	"github.com/turbot/pipe-fittings/v2/schema"
@@ -18,15 +16,12 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"log"
 	"os"
+	"path/filepath"
 )
 
-func setConfig(ctx context.Context) error {
+func initConfig(ctx context.Context) error {
+	// resolve args
 	connectionConfigStr := viper.GetString("config")
-
-	// set app_specific.InstallDir
-	err := resolveInstallDir()
-
-	pluginName := NewSteampipeImageRef(pluginAlias).DisplayImageRef()
 	connectionName := viper.GetString("connection")
 
 	// if a connection config string was provided, we  will NOT load the connection config from the config file, so
@@ -35,45 +30,65 @@ func setConfig(ctx context.Context) error {
 		if connectionName != "" {
 			return fmt.Errorf("you cannot use both --config and --connection flags at the same time")
 		}
-		return setConnectionConfig(pluginName, connectionConfigStr)
+		return setConnectionConfig(connectionConfigStr)
 	}
+
+	// if no connection name was specified just set an empty config
+	if connectionName == "" {
+		return setConnectionConfig("")
+	}
+
+	// set app_specific.InstallDir
+	configFolder, err := resolveConfigDir()
 
 	// so we will try to load the connection config from the config location
 	// load config from the installation folder -  load all spc files from config directory
 	include := filehelpers.InclusionsFromExtensions(pconstants.ConnectionConfigExtension())
 	loadOptions := &loadConfigOptions{include: include}
-
-	steampipeConfig, err := loadConfig(ctx, pfilepaths.EnsureConfigDir(), loadOptions)
+	steampipeConfig, err := loadConfig(ctx, configFolder, loadOptions)
 	if err != nil {
 		return err
 	}
 
-	// if there are no connections, or there is more than one connection, and no connection name was was specified,
-	// do not set the connection config
-	if len(steampipeConfig.Connections) == 0 || len(steampipeConfig.Connections) > 1 && connectionName == "" {
-		return nil
+	conn, ok := steampipeConfig.Connections[connectionName]
+	if !ok {
+		return fmt.Errorf("connection '%s' not found in config", connectionName)
 	}
-
-	// if a connection name was specified, use it to get the connection config
-	var connection *modconfig.SteampipeConnection
-	if connectionName != "" {
-		var ok bool
-		connection, ok = steampipeConfig.Connections[connectionName]
-		if !ok {
-			return fmt.Errorf("connection '%s' not found in config", connectionName)
-		}
-	} else {
-		// if no connection name was specified, use the first connection in the config
-		for _, conn := range steampipeConfig.Connections {
-			connection = conn
-			break
-		}
-	}
-	// set the connection config
-	if err := setConnectionConfig(pluginName, connection.Config); err != nil {
+	// if we have a connection, set the rate limiter config (if any)
+	// set the connection config - this may be empty
+	if err := setConnectionConfig(conn.Config); err != nil {
 		return fmt.Errorf("error setting connection config: %w", err)
 	}
 
+	// set rate limiters if any
+	return setRateLimiter(steampipeConfig, conn)
+}
+
+func resolveConfigDir() (string, error) {
+	if configDir := viper.GetString("config-dir"); configDir != "" {
+		if _, err := os.Stat(configDir); os.IsNotExist(err) {
+			return "", fmt.Errorf("config directory '%s' does not exist", configDir)
+		}
+		return configDir, nil
+	}
+	// return the default config directory for the current install directory
+
+	// set the install directory
+	installDir := os.Getenv("STEAMPIPE_INSTALL_DIR")
+	if installDir == "" {
+		var err error
+		installDir, err = files.Tildefy("~/.steampipe")
+		if err != nil {
+			return "", fmt.Errorf("error resolving install directory: %w", err)
+		}
+	}
+
+	configFolder := filepath.Join(installDir, "config")
+	return configFolder, nil
+
+}
+
+func setRateLimiter(steampipeConfig *SteampipeConfig, connection *modconfig.SteampipeConnection) error {
 	// set the rate limiter config
 	plugin, ok := steampipeConfig.PluginsInstances[typehelpers.SafeString(connection.PluginInstance)]
 	if !ok {
@@ -84,35 +99,18 @@ func setConfig(ctx context.Context) error {
 	}
 
 	var defs []*proto.RateLimiterDefinition
-
 	for _, l := range plugin.Limiters {
 		defs = append(defs, RateLimiterAsProto(l))
 	}
 
 	req := &proto.SetRateLimitersRequest{Definitions: defs}
 
-	_, err = pluginServer.SetRateLimiters(req)
+	_, err := pluginServer.SetRateLimiters(req)
 	return err
 }
 
-func resolveInstallDir() error {
-	// if the install dir is not set, use the current working directory
-	installDir := os.Getenv("STEAMPIPE_INSTALL_DIR")
-	if installDir == "" {
-		var err error
-		installDir, err = files.Tildefy("~/.steampipe")
-		if err != nil {
-			return fmt.Errorf("error resolving install directory: %w", err)
-		}
-	}
-
-	app_specific.InstallDir = installDir
-
-	return nil
-}
-
 // set the connection HCL config for the plugin
-func setConnectionConfig(pluginName string, connectionConfigStr string) error {
+func setConnectionConfig(connectionConfigStr string) error {
 	connectionConfig := &proto.ConnectionConfig{
 		Connection:      connection,
 		Plugin:          pluginAlias,
@@ -123,14 +121,15 @@ func setConnectionConfig(pluginName string, connectionConfigStr string) error {
 
 	configs := []*proto.ConnectionConfig{connectionConfig}
 	req := &proto.SetAllConnectionConfigsRequest{
-		Configs: configs,
+		Configs:        configs,
+		MaxCacheSizeMb: -1,
 	}
 
 	_, err := pluginServer.SetAllConnectionConfigs(req)
-
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -157,7 +156,6 @@ func loadConfig(ctx context.Context, configFolder string, opts *loadConfigOption
 	if len(configPaths) == 0 {
 		return steampipeConfig, nil // no config files found, return empty config
 	}
-
 
 	fileData, diags := pparse.LoadFileData(configPaths...)
 	if diags.HasErrors() {
@@ -187,6 +185,11 @@ func loadConfig(ctx context.Context, configFolder string, opts *loadConfigOption
 			if moreDiags.HasErrors() {
 				continue
 			}
+			// only add if the plugin alias matches the export pluginAlias
+			if plugin.Alias != pluginAlias {
+				continue
+			}
+
 			// add plugin to steampipeConfig
 			// NOTE: this errors if there is a plugin block with a duplicate label
 			if err := steampipeConfig.addPlugin(plugin); err != nil {
@@ -199,15 +202,17 @@ func loadConfig(ctx context.Context, configFolder string, opts *loadConfigOption
 			if moreDiags.HasErrors() {
 				continue
 			}
+			// only add if the plugin alias matches the pluginAlias
+			if connection.PluginAlias != pluginAlias {
+				continue
+			}
+
 			if existingConnection, alreadyThere := steampipeConfig.Connections[connection.Name]; alreadyThere {
 				err := getDuplicateConnectionError(existingConnection, connection)
 				return nil, err
 			}
-			//if ok, errorMessage := db_common.IsSchemaNameValid(connection.Name); !ok {
-			//	return error_helpers.NewErrorsAndWarning(sperr.New("invalid connection name: '%s' in '%s'. %s ", connection.Name, block.TypeRange.Filename, errorMessage))
-			//}
-			steampipeConfig.Connections[connection.Name] = connection
 
+			steampipeConfig.Connections[connection.Name] = connection
 		}
 	}
 

@@ -49,11 +49,8 @@ func setVersionProperties() {
 func executeCommand(cmd *cobra.Command, args []string) {
 	table := args[0]
 
-	// set the connection and rate limiter config
-	if err := setConfig(cmd.Context()); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	err := initialise(cmd)
+
 	schema, err := getSchema(table)
 	if err != nil {
 		fmt.Println(err)
@@ -64,19 +61,11 @@ func executeCommand(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
 	quals, err := buildQuals(viper.GetStringSlice("where"), schema)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
-	}
-
-	limiterConfigStr := viper.GetString("limiter")
-	if limiterConfigStr != "" {
-		if err = setRateLimiters(limiterConfigStr); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
 	}
 
 	var displayFunc displayRowFunc
@@ -108,6 +97,23 @@ func executeCommand(cmd *cobra.Command, args []string) {
 			os.Exit(1)
 		}
 	}
+}
+
+// initialise parses the config, sets the connection config and rate limiters and disables query caching
+func initialise(cmd *cobra.Command) error {
+	// set the connection and rate limiter config
+	if err := initConfig(cmd.Context()); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// disable query cache - we are only executing a single query
+	_, err := pluginServer.SetCacheOptions(&proto.SetCacheOptionsRequest{Enabled: false})
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	return err
 }
 
 func executeQuery(tableName string, connectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) error {
