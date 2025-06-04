@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/spf13/viper"
 	filehelpers "github.com/turbot/go-kit/files"
 	typehelpers "github.com/turbot/go-kit/types"
@@ -15,8 +18,6 @@ import (
 	"github.com/turbot/pipe-fittings/v2/schema"
 	"github.com/turbot/pipe-fittings/v2/sperr"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
-	"log"
-	"os"
 )
 
 // load the connection config from the config file or from the command line args,
@@ -55,6 +56,10 @@ func initConfig(ctx context.Context) error {
 	conn, ok := steampipeConfig.Connections[connectionName]
 	if !ok {
 		return fmt.Errorf("connection '%s' not found in config", connectionName)
+	}
+	// aggregator connections are not supported yet - https://github.com/turbot/steampipe-export/issues/82
+	if conn.Type == modconfig.ConnectionTypeAggregator {
+		return fmt.Errorf("connection '%s' is an aggregator connection, which is not supported yet", connectionName)
 	}
 	// if we have a connection, set the rate limiter config (if any)
 	// set the connection config - this may be empty
