@@ -29,14 +29,14 @@ examples at the Steampipe Hub: https://hub.steampipe.io/plugins/turbot/{{.Plugin
     }
 
 	// Define flags
-    rootCmd.PersistentFlags().String("connection", "", "Name of a connection defined in the config dir to use for this command")
-	rootCmd.PersistentFlags().String("config", "", "Config data for connection, defined in HCL (deprecated - use --connection instead)")
-	rootCmd.PersistentFlags().String("config-dir", "", "Directory to read config file from - defaults to $STEAMPIPE_INSTALL_DIR/config")
-	rootCmd.PersistentFlags().StringArray("where", []string{}, "query 'where' clause")
-	rootCmd.PersistentFlags().String("output", "csv", "output format: csv, json or jsonl")
-	rootCmd.PersistentFlags().StringSlice("select", nil, "columns to display")
-	rootCmd.PersistentFlags().Int("limit", 0, "query limit")
-	rootCmd.SetVersionTemplate("steampipe_export_{{.Plugin}} v{{"{{"}} .Version {{"}}"}}\n")
+    rootCmd.PersistentFlags().String("connection", "", "Name of the connection to use (must match a connection defined in the config file)")
+    rootCmd.PersistentFlags().String("config", "", "Inline HCL config data for the connection  (deprecated - use --connection instead)")
+    rootCmd.PersistentFlags().String("config-dir", "", "Directory to read config files from (defaults to $STEAMPIPE_INSTALL_DIR/config)")
+    rootCmd.PersistentFlags().StringArray("where", []string{}, "Optional WHERE clause(s) to filter query results")
+    rootCmd.PersistentFlags().String("output", "csv", "Output format: csv, json or jsonl")
+    rootCmd.PersistentFlags().StringSlice("select", nil, "Columns to include in the output")
+    rootCmd.PersistentFlags().Int("limit", 0, "Maximum number of rows to return (0 means no limit)")
+    rootCmd.SetVersionTemplate("steampipe_export_{{.Plugin}} v{{"{{"}} .Version {{"}}"}}\n")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
