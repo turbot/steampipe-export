@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	goversion "github.com/hashicorp/go-version"
-	"github.com/turbot/go-kit/helpers"
 	typehelpers "github.com/turbot/go-kit/types"
 	"github.com/turbot/pipe-fittings/v2/constants"
 	"github.com/turbot/pipe-fittings/v2/modconfig"
@@ -15,7 +14,7 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
 )
 
-// SteampipeConfig is a struct to hold Connection map and Steampipe options
+// SteampipeConfig is a struct to hold Connection and Plugin config
 type SteampipeConfig struct {
 	// map of plugin configs, keyed by plugin instance
 	PluginsInstances map[string]*plugin.Plugin
@@ -204,18 +203,4 @@ func (c *SteampipeConfig) resolvePluginInstanceForConnection(connection *modconf
 
 	return p, nil
 
-}
-
-// GetNonSearchPathConnections returns a list of connection names that are not in the provided search path
-func (c *SteampipeConfig) GetNonSearchPathConnections(searchPath []string) []string {
-	var res []string
-	//convert searchPath to map for easy lookup
-	searchPathLookup := helpers.SliceToLookup(searchPath)
-
-	for connectionName := range c.Connections {
-		if _, inSearchPath := searchPathLookup[connectionName]; !inSearchPath {
-			res = append(res, connectionName)
-		}
-	}
-	return res
 }

@@ -18,6 +18,7 @@ var isFirstJSONRow = true
 var isJSONStarted = false
 var rowCount = 0
 
+// displayCSVRow formats and outputs the row data in CSV format, managing headers and selected columns.
 func displayCSVRow(displayRow *proto.ExecuteResponse, columns []string) error {
 	row := displayRow.Row
 	selectColumns := viper.GetStringSlice("select")
@@ -154,7 +155,8 @@ func displayJSONRow(displayRow *proto.ExecuteResponse, columns []string) error {
 	return nil
 }
 
-// Call this function at the end of your data processing to close the JSON array
+// finishJSONOutput checks if JSON output has started and closes the JSON array if it has.
+// It should be called if the output format is JSON and all rows have been processed.
 func finishJSONOutput() error {
 	if isJSONStarted {
 		fmt.Println("]")

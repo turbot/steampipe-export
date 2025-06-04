@@ -14,6 +14,7 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 )
 
+// buildQuals builds a map of quals from the provided where clauses and table schema.
 func buildQuals(whereClauses []string, schema *proto.TableSchema) (map[string]*proto.Quals, error) {
 	var quals = make(map[string]*proto.Quals)
 	if len(whereClauses) > 0 {
@@ -34,6 +35,7 @@ func buildQuals(whereClauses []string, schema *proto.TableSchema) (map[string]*p
 	return quals, nil
 }
 
+// filterStringToQuals converts a filter string into a map of quals based on the provided table schema.
 func filterStringToQuals(raw string, tableSchema *proto.TableSchema) (map[string]*proto.Quals, error) {
 	columnMap := tableSchema.GetColumnMap()
 	keyColumns := tableSchema.GetAllKeyColumns()
@@ -179,6 +181,7 @@ func validateQual(column, operator string, columnMap map[string]*proto.ColumnDef
 	return fmt.Errorf("there is no key column defined for column '%s'", column)
 }
 
+// stringToQualValue converts a string value to a QualValue based on the column type.
 func stringToQualValue(valueString string, columnType proto.ColumnType) (*proto.QualValue, error) {
 	result := &proto.QualValue{}
 	switch columnType {
@@ -260,6 +263,7 @@ func stringToQualValue(valueString string, columnType proto.ColumnType) (*proto.
 	return result, nil
 }
 
+// stringToQualListValue converts a slice of strings into a QualValue with a ListValue type.
 func stringToQualListValue(values []string, columnType proto.ColumnType) (*proto.QualValue, error) {
 	res := &proto.QualValue{
 		Value: &proto.QualValue_ListValue{

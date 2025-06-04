@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	pfplugin "github.com/turbot/pipe-fittings/v2/plugin"
+	"log"
+	"os"
+	"path/filepath"
+
 	"github.com/spf13/viper"
 	"github.com/turbot/go-kit/files"
 	filehelpers "github.com/turbot/go-kit/files"
@@ -14,11 +19,10 @@ import (
 	"github.com/turbot/pipe-fittings/v2/schema"
 	"github.com/turbot/pipe-fittings/v2/sperr"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
-	"log"
-	"os"
-	"path/filepath"
 )
 
+// load the connection config from the config file or from the command line args,
+// set the connection config and rate limiter config on the plugin
 func initConfig(ctx context.Context) error {
 	// resolve args
 	connectionConfigStr := viper.GetString("config")
@@ -64,6 +68,8 @@ func initConfig(ctx context.Context) error {
 	return setRateLimiter(steampipeConfig, conn)
 }
 
+// resolveConfigDir resolves the config directory from the viper config or returns the default config directory,
+// based on the STEAMPIPE_INSTALL_DIR environment variable or the default install directory.
 func resolveConfigDir() (string, error) {
 	if configDir := viper.GetString("config-dir"); configDir != "" {
 		if _, err := os.Stat(configDir); os.IsNotExist(err) {
@@ -88,6 +94,7 @@ func resolveConfigDir() (string, error) {
 
 }
 
+// setRateLimiter sets the rate limiter config for the plugin, based on the SteampipeConfig and connection.
 func setRateLimiter(steampipeConfig *SteampipeConfig, connection *modconfig.SteampipeConnection) error {
 	// set the rate limiter config
 	plugin, ok := steampipeConfig.PluginsInstances[typehelpers.SafeString(connection.PluginInstance)]
@@ -100,13 +107,35 @@ func setRateLimiter(steampipeConfig *SteampipeConfig, connection *modconfig.Stea
 
 	var defs []*proto.RateLimiterDefinition
 	for _, l := range plugin.Limiters {
-		defs = append(defs, RateLimiterAsProto(l))
+		defs = append(defs, rateLimiterAsProto(l))
 	}
 
 	req := &proto.SetRateLimitersRequest{Definitions: defs}
 
 	_, err := pluginServer.SetRateLimiters(req)
 	return err
+}
+
+// rateLimiterAsProto converts a RateLimiter to a RateLimiterDefinition proto message.
+func rateLimiterAsProto(l *pfplugin.RateLimiter) *proto.RateLimiterDefinition {
+	res := &proto.RateLimiterDefinition{
+		Name:  l.Name,
+		Scope: l.Scope,
+	}
+	if l.MaxConcurrency != nil {
+		res.MaxConcurrency = *l.MaxConcurrency
+	}
+	if l.BucketSize != nil {
+		res.BucketSize = *l.BucketSize
+	}
+	if l.FillRate != nil {
+		res.FillRate = *l.FillRate
+	}
+	if l.Where != nil {
+		res.Where = *l.Where
+	}
+
+	return res
 }
 
 // set the connection HCL config for the plugin
@@ -140,6 +169,7 @@ type loadConfigOptions struct {
 	allowedOptions []string
 }
 
+// loadConfig loads the Steampipe configuration from the specified folder.
 func loadConfig(ctx context.Context, configFolder string, opts *loadConfigOptions) (*SteampipeConfig, error) {
 	steampipeConfig := newSteampipeConfig()
 

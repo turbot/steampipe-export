@@ -39,6 +39,7 @@ func main() {
 	}
 }
 
+// setVersionProperties sets the auto-populated version properties in viper
 func setVersionProperties() {
 	viper.SetDefault(constants.ConfigKeyVersion, version)
 	viper.SetDefault(constants.ConfigKeyCommit, commit)
@@ -46,6 +47,7 @@ func setVersionProperties() {
 	viper.SetDefault(constants.ConfigKeyBuiltBy, builtBy)
 }
 
+// executeCommand is the main function that runs when the command is executed.
 func executeCommand(cmd *cobra.Command, args []string) {
 	table := args[0]
 
@@ -56,7 +58,9 @@ func executeCommand(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	columns, err := getColumns(schema)
+
+
+	columns, err := getColumns(viper.GetStringSlice("select"), schema)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -116,6 +120,7 @@ func initialise(cmd *cobra.Command) error {
 	return err
 }
 
+// executeQuery executes a query against the specified table and connection, using the provided columns and quals.
 func executeQuery(tableName string, connectionName string, columns []string, qual map[string]*proto.Quals, displayRow displayRowFunc) error {
 	// construct execute request
 
@@ -185,21 +190,22 @@ func executeQuery(tableName string, connectionName string, columns []string, qua
 	return nil
 }
 
-func getColumns(schema *proto.TableSchema) ([]string, error) {
-	var columns = viper.GetStringSlice("select")
-	if len(columns) != 0 {
+// getColumns validates the provided select columns against the table schema and
+// returns the sorted list of columns to be used in the query.
+func getColumns(selectColumns []string, schema *proto.TableSchema) ([]string, error) {
+	if len(selectColumns) != 0 {
 		tableColumn := schema.GetColumnNames()
-		for _, item := range columns {
+		for _, item := range selectColumns {
 			if !slices.Contains(tableColumn, item) {
 				return nil, fmt.Errorf("column %s does not exist", item)
 			}
 		}
 	}
-	if len(columns) == 0 {
-		columns = schema.GetColumnNames()
+	if len(selectColumns) == 0 {
+		selectColumns = schema.GetColumnNames()
 	}
-	sort.Strings(columns)
-	return columns, nil
+	sort.Strings(selectColumns)
+	return selectColumns, nil
 }
 
 func getSchema(table string) (*proto.TableSchema, error) {
