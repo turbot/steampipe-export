@@ -2,6 +2,8 @@ module github.com/turbot/steampipe-export
 
 go 1.24
 
+toolchain go1.24.1
+
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/go-hclog v1.6.3
