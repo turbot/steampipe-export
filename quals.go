@@ -10,8 +10,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/turbot/pipe-fittings/v2/sperr"
-	sdkfilter "github.com/turbot/steampipe-plugin-sdk/v5/filter"
-	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	sdkfilter "github.com/turbot/steampipe-plugin-sdk/v6/filter"
+	"github.com/turbot/steampipe-plugin-sdk/v6/grpc/proto"
 )
 
 // buildQuals builds a map of quals from the provided where clauses and table schema.

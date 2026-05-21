@@ -8,7 +8,7 @@ import (
 	encodingcsv "encoding/csv"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/spf13/viper"
-	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v6/grpc/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 type displayRowFunc func(row *proto.ExecuteResponse, columns []string) error
